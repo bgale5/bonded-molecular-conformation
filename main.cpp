@@ -28,16 +28,19 @@ Molecule rand_mol(unsigned len)
 	return s;
 }
 
-void print_mol(Molecule &s)
+void print_csv(Molecule& s)
 {
-	for (auto &i : s.bond_angles)
-		std::cout << i << ' ';
+	for (auto i = 0; i < s.bond_angles.size(); i++) {
+		std::cout << s.bond_angles[i];
+		if (i != s.bond_angles.size() - 1)
+			std::cout << ",";
+	}
 	std::cout << std::endl;
 }
 
 int main()
 {
-	Molecule m = rand_mol(30);
-	print_mol(m);
+	Molecule m = rand_mol(8);
+	print_csv(m);
 	return 0;
 }
