@@ -739,3 +739,5 @@ ASALocalRun/
 
 
 # End of https://www.gitignore.io/api/vim,macos,latex,clion,windows,visualstudio,visualstudiocode
+
+*.png
