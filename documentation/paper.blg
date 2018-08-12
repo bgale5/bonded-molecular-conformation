@@ -1,0 +1,17 @@
+[0] Config.pm:302> INFO - This is Biber 2.11
+[0] Config.pm:305> INFO - Logfile is 'paper.blg'
+[43] biber-darwin:313> INFO - === Fri Jul 27, 2018, 22:45:45
+[70] Biber.pm:371> INFO - Reading 'paper.bcf'
+[174] Biber.pm:857> INFO - Found 6 citekeys in bib section 0
+[190] Biber.pm:3976> INFO - Processing section 0
+[205] Biber.pm:4136> INFO - Looking for bibtex format file 'references.bib' for section 0
+[207] bibtex.pm:1500> INFO - LaTeX decoding ...
+[253] bibtex.pm:1316> INFO - Found BibTeX data source 'references.bib'
+[303] Utils.pm:193> WARN - month field 'Aug' in entry 'PhysRevLett.91.080201' is not an integer - this will probably not sort properly.
+[318] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[318] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[318] Biber.pm:3804> INFO - Sorting list 'none/global//global/global' of type 'entry' with template 'none' and locale 'en-US'
+[318] Biber.pm:3810> INFO - No sort tailoring available for locale 'en-US'
+[329] bbl.pm:617> INFO - Writing 'paper.bbl' with encoding 'UTF-8'
+[333] bbl.pm:720> INFO - Output to paper.bbl
+[335] Biber.pm:110> INFO - WARNINGS: 1

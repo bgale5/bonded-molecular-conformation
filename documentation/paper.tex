@@ -1,0 +1,96 @@
+\documentclass{article}
+\usepackage[style=ieee]{biblatex}
+\bibliography{references.bib}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+	
+\title{Lennard-Jones Energy Minimisation}
+\author{Bennett Gale}
+\date{July 2018}
+\lstset{language=C++, basicstyle=\ttfamily}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\pagebreak
+
+\section{Introduction}
+
+The model molecular energy minimisation problem involves the geometric
+configuration of a cluster of atoms in two dimensions, each connected by rigid
+bonds of unit length, such that the total potential energy yielded by the sum of
+individual Lennard-Jones potentials is globally minimised. The total potential
+energy of the cluster is given by 
+$$V(r)=\sum^{N-1}_{i=1}\sum^{N}_{j=i+1}\left(r^{-12}_{ij}-2r^{-6}_{ij}\right)$$
+Where $r$ is the euclidean distance between a pair of atoms and $N$ is the
+number of atoms in the chain.
+
+The energy minimisation problem is historically difficult because of the
+exponential relationship between the locally stable structures and the number of
+atoms, $N$, in the molecule. That is, as the size of the cluster increases, the
+number of local minima increases exponentially such that when $N$ approaches
+100, there exist more than $10^{140}$ minima \cite{DAVEN1996195}. It is
+therefore necessary to employ sophisticated search algorithms in order to make
+larger input sizes attainable.
+
+Section~\ref{litreview} will discuss some of the research that has already taken
+place in this area. Section~\ref{proposed} will detail the algorithm proposed by
+this paper.
+
+\section{Literature Review} \label{litreview}
+
+Biased modelling approaches, in which prior assumptions are made regarding the
+structure of optimal configurations, have been used successfully in the past to
+yield powerful results. Initially, for example, global minima for many of
+$N\leq150$ were found using lattices derived from icosahedron
+\cite{doi:10.1063/1.453492}. However while these methods can be the most
+powerful, they suffer in cases when the assumed model is largely different from
+the real configuration \cite{doi:10.1002/jcc.20096}. Therefore, more general,
+less biased algorithms have been applied in order to increase robustness against
+such exceptional cases.
+
+Genetic algorithms have been employed in in order to successfully extend the
+range of input size $N$ that is reachable through structural optimisation
+\cite{DAVEN1996195, doi:10.1002/qua.560440214,PULLAN1998331}. This population
+based approach emulates the Darwinian process of natural selection, and works by
+performing crossover operations on pairs of candidate configurations over many
+generations until a global minimum is produced. This method has been successful
+in producing results that were previously unseen in literature for certain $N$
+sizes, due to its generality when compared with more biased approaches.
+
+The Conformational Space Annealing Method is a more recent unbiased global
+optimisation algorithm that has produced very good results
+\cite{PhysRevLett.91.080201}. This technique is highly robust against random
+initial configurations thanks to its generality. As a result, it has therefore
+been able to produce all global minima for $n\leq183$ without suffering from
+exceptional cases like those experienced by the biased modelling algorithms.
+This algorithm combines concepts of Monte Carlo with Minimisation, Genetic
+Algorithm and simulated Annealing, and requires no specific knowledge or
+assumptions regarding the optimal structure. Local minimisation is performed on
+a set of configurations, and then similarly to the mating process of genetic
+algorithm, a subset of configurations is produced. A parameter $D_cut$ is
+introduced and acts as a temperature variable in the annealing process. This
+parameter represents a distance measure between configurations and is used to
+maintain diversity in the population \cite{PhysRevLett.91.080201}.
+
+Another unbiased global optimisation algorithm, known as dynamic lattice
+searching (DLS), works by repeatedly constructing and searching a dynamic
+lattice until a global minimum is produced \cite{doi:10.1002/jcc.20096}. This
+lattice is built by searching the possible location sites for added atoms, which
+are then iteratively relocated from lattice sites of higher energy to those of
+lower energy. This method is very efficient because of how much it reduces the
+search space, but remains unbiased and therefore does not exhibit the same
+limitations seen in the biased modelling based techniques.
+
+\section{Proposed Optimisation Algorithm} \label{proposed}
+
+\pagebreak
+
+\printbibliography
+
+\end{document}
