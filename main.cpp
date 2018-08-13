@@ -10,7 +10,7 @@ struct Molecule {
 	explicit Molecule(unsigned length)
 	{
 		this->length = length;
-		bond_angles.resize(length - 1);
+		bond_angles.resize(length - 2);
 	}
 };
 
@@ -61,7 +61,8 @@ double lj_potential(Molecule& s)
         for (int j = i + 1; j < s.length; j++) {
         	double delta_x = cart[j].x - cart[i].x;
         	double delta_y = cart[j].y - cart[i].y;
-            v += 1 / pow(pow(delta_x, 2) + pow(delta_y, 2), 6) - 2 / pow(pow(delta_x, 2) + pow(delta_y, 2), 3);
+            v += 1 / pow(pow(delta_x, 2) + pow(delta_y, 2), 6)
+                 - 2 / pow(pow(delta_x, 2) + pow(delta_y, 2), 3);
         }
     }
     return v;
