@@ -2,6 +2,7 @@
 #include <vector>
 #include <random>
 #include <cmath>
+#include <lbfgs.h>
 
 struct Molecule {
 	unsigned length;
