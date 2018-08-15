@@ -44,50 +44,83 @@ this paper.
 
 \section{Literature Review} \label{litreview}
 
-Biased modelling approaches, in which prior assumptions are made regarding the
-structure of optimal configurations, have been used successfully in the past to
-yield powerful results. Initially, for example, global minima for many of
-$N\leq150$ were found using lattices derived from icosahedron
-\cite{doi:10.1063/1.453492}. However while these methods can be the most
-powerful, they suffer in cases when the assumed model is largely different from
-the real configuration \cite{doi:10.1002/jcc.20096}. Therefore, more general,
-less biased algorithms have been applied in order to increase robustness against
-such exceptional cases.
+Genetic algorithms have been applied \cite{doi:10.1002/qua.560440214,
+PULLAN1998331} successfully in order to extend the range of input size $N$ that
+is reachable through structural optimisation. This population based approach
+emulates the Darwinian process of natural selection, and works by performing
+crossover operations on pairs of candidate configurations with selection
+probabilities based on their fitness, producing new child nodes which contain
+genetic material from both parents. With every crossover operation there is a
+small chance of subsequent random mutation of the child configurations, the
+purpose of which is to promote genetic diversity within the population and
+prevent premature convergence. Over many generations the population converges
+towards a global minimum as each configuration communicates
+information about the global search space through the crossover operation. This
+method has been successful in producing results that were previously unseen in
+literature for certain input sizes.
 
-Genetic algorithms have been employed in in order to successfully extend the
-range of input size $N$ that is reachable through structural optimisation
-\cite{DAVEN1996195, doi:10.1002/qua.560440214,PULLAN1998331}. This population
-based approach emulates the Darwinian process of natural selection, and works by
-performing crossover operations on pairs of candidate configurations over many
-generations until a global minimum is produced. This method has been successful
-in producing results that were previously unseen in literature for certain $N$
-sizes, due to its generality when compared with more biased approaches.
+Judson \textit{et al.} compare the performance of GAs with simulated annealing,
+a stochastic global optimisation technique in which Monte Carlo steps are taken
+and new states are accepted if they are fitter, or with a probability based on a
+function of a temperature value \cite{doi:10.1002/qua.560440214}. When applied
+to the molecular conformation problem, they found that the GA method and the SA
+method, both applied as global meta-heuristics in conjunction with
+gradient-based local optimisers (conjugate gradient), similarly outperformed
+purely stochastic methods \cite{doi:10.1002/qua.560440214}. Judson \textit{et
+al.} classify points on the model energy surface as being in one of three
+states: knotted and of high energy, unknotted and of low but not minimal energy,
+and unknotted with globally minimised energy \cite{doi:10.1002/qua.560440214}.
+They applied both GA and SA in order to make the transition from the first state
+to the second state before applying local optimisation to descend to the bottom
+of the basin.
 
-The Conformational Space Annealing Method is a more recent unbiased global
-optimisation algorithm that has produced very good results
-\cite{PhysRevLett.91.080201}. This technique is highly robust against random
-initial configurations thanks to its generality. As a result, it has therefore
-been able to produce all global minima for $n\leq183$ without suffering from
-exceptional cases like those experienced by the biased modelling algorithms.
-This algorithm combines concepts of Monte Carlo with Minimisation, Genetic
-Algorithm and simulated Annealing, and requires no specific knowledge or
-assumptions regarding the optimal structure. Local minimisation is performed on
-a set of configurations, and then similarly to the mating process of genetic
-algorithm, a subset of configurations is produced. A parameter $D_cut$ is
-introduced and acts as a temperature variable in the annealing process. This
-parameter represents a distance measure between configurations and is used to
-maintain diversity in the population \cite{PhysRevLett.91.080201}.
+Genetic operators for the two dimensional bonded Lennard-Jones problem have
+since been further developed with successful results \cite{PULLAN1998331},
+proving the GA approach to be a viable global optimisation technique. Pullan
+\cite{PULLAN1998331} proposes three genetic crossover methods and four mutation
+operators and applies these in a parallel genetic algorithm to find global
+minima for most values of $N, 2 \leq N \leq 55$, as well as a minimum for $N =
+61$ which was previously unseen in literature.
 
-Another unbiased global optimisation algorithm, known as dynamic lattice
-searching (DLS), works by repeatedly constructing and searching a dynamic
-lattice until a global minimum is produced \cite{doi:10.1002/jcc.20096}. This
-lattice is built by searching the possible location sites for added atoms, which
-are then iteratively relocated from lattice sites of higher energy to those of
-lower energy. This method is very efficient because of how much it reduces the
-search space, but remains unbiased and therefore does not exhibit the same
-limitations seen in the biased modelling based techniques.
+This two stage hybrid method has been successful, but Judson \textit{et al.}
+also suggest the possibility of adding a third optimisation stage which is
+intermediate between the global and local gradient methods
+\cite{doi:10.1002/qua.560440214}. It is thought that a non-gradient optimisation
+method such as the simplex method may provide a means of stepping over barriers
+into possibly deeper minima surrounding those found by the global method in the
+first phase.
 
-\section{Proposed Optimisation Algorithm} \label{proposed}
+More recently, the Conformational Space Annealing Method
+\cite{PhysRevLett.91.080201} has been developed as a global optimisation
+algorithm that has produced very good results when applied to the problem of an
+unbound cluster of atoms with Lennard-Jones relationships. This algorithm
+combines concepts of Monte Carlo with minimisation, genetic algorithms, and
+simulated annealing. While this technique has not been applied to the bonded
+variant of the Lennard-Jones conformation problem as discussed here, it
+demonstrates that a hybrid approach combining SA and evolutionary population
+based algorithms may be a viable technique in a similar problem domain.
+
+\section{Proposed Algorithm} \label{proposed}
+
+As discussed in section~\ref{litreview}, global meta-heuristics such as the
+genetic algorithm, have been used successfully as a means of navigating the
+global search space and avoiding local minima that are caused by knots in the
+configurations \cite{PULLAN1998331, doi:10.1002/qua.560440214}. These methods
+use the global optimiser to find unknotted potential candidate configurations
+and then refine them using gradient-based methods. Judson \textit{et al.} have
+suggested a three stage system in which a non-gradient optimiser such as the
+simplex method may be used as an intermediate stage between the global and
+local-gradient optimisation in order to traverse barriers into potentially
+deeper basins \cite{doi:10.1002/qua.560440214}.
+
+As simulated annealing has been found to be successful when combined with
+evolutionary algorithms in similar problem domains \cite{PhysRevLett.91.080201},
+this paper will explore its use as an intermediate non-gradient method such that
+the proposed algorithm has three levels: (1) global meta-heuristic, (2),
+intermediate non-gradient optimisation and (3) local gradient-based
+optimisation.
+
+
 
 \pagebreak
 
