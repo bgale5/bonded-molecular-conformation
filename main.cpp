@@ -43,20 +43,26 @@ void print_csv(Molecule& s)
 	std::cout << std::endl;
 }
 
+
+void angle_to_cart(const Molecule& s, std::vector<Cartesian> &cart)
+{
+	cart[0] = {0, 0};
+	double phi = 0;
+	for (int i = 0; i < s.bond_angles.size(); i++) {
+		phi += s.bond_angles[i];
+		double x = cart[i].x + cos(phi);
+		double y = cart[i].y + sin(phi);
+		cart[i + 1] = {x, y};
+	}
+}
+
 /**
  * Calculate the Lennard-Jones potential energy of the given system s
  */
 double lj_potential(Molecule& s)
 {
-    std::vector<Cartesian> cart(s.length);
-    cart[0] = {0, 0};
-    double phi = 0;
-    for (int i = 0; i < s.bond_angles.size(); i++) {
-        phi += s.bond_angles[i];
-        double x = cart[i].x + cos(phi);
-        double y = cart[i].y + sin(phi);
-	    cart[i + 1] = {x, y};
-    }
+	std::vector<Cartesian> cart(s.length);
+	angle_to_cart(s, cart);
     double v = 0;
     for (int i = 0; i < s.length - 1; i++) {
         for (int j = i + 1; j < s.length; j++) {

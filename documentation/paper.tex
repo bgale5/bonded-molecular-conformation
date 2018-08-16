@@ -9,9 +9,9 @@
 \usepackage{algpseudocode}
 \usepackage{amsmath}
 	
-\title{Lennard-Jones Energy Minimisation}
+\title{3 Stage Hybrid Optimisation Algorithm for the Bonded Lennard-Jones Molecular Conformation Problem}
 \author{Bennett Gale}
-\date{July 2018}
+\date{August 2018}
 \lstset{language=C++, basicstyle=\ttfamily}
 
 \begin{document}
@@ -22,7 +22,7 @@
 \section{Introduction}
 
 The model molecular energy minimisation problem involves the geometric
-configuration of a cluster of atoms in two dimensions, each connected by rigid
+configuration of a chain of atoms in two dimensions, each connected by rigid
 bonds of unit length, such that the total potential energy yielded by the sum of
 individual Lennard-Jones potentials is globally minimised. The total potential
 energy of the cluster is given by 
@@ -54,25 +54,25 @@ genetic material from both parents. With every crossover operation there is a
 small chance of subsequent random mutation of the child configurations, the
 purpose of which is to promote genetic diversity within the population and
 prevent premature convergence. Over many generations the population converges
-towards a global minimum as each configuration communicates
-information about the global search space through the crossover operation. This
-method has been successful in producing results that were previously unseen in
-literature for certain input sizes.
+towards a global minimum as each configuration communicates information about
+the global search space through the crossover operation. This method has been
+successful in producing results that were previously unseen in literature for
+certain input sizes \cite{PULLAN1998331}.
 
 Judson \textit{et al.} compare the performance of GAs with simulated annealing,
-a stochastic global optimisation technique in which Monte Carlo steps are taken
-and new states are accepted if they are fitter, or with a probability based on a
-function of a temperature value \cite{doi:10.1002/qua.560440214}. When applied
-to the molecular conformation problem, they found that the GA method and the SA
-method, both applied as global meta-heuristics in conjunction with
-gradient-based local optimisers (conjugate gradient), similarly outperformed
-purely stochastic methods \cite{doi:10.1002/qua.560440214}. Judson \textit{et
-al.} classify points on the model energy surface as being in one of three
-states: knotted and of high energy, unknotted and of low but not minimal energy,
-and unknotted with globally minimised energy \cite{doi:10.1002/qua.560440214}.
-They applied both GA and SA in order to make the transition from the first state
-to the second state before applying local optimisation to descend to the bottom
-of the basin.
+a probabilistic global optimisation technique in which Monte Carlo steps are
+taken and new states are accepted if they are fitter, or with a probability
+based on a function of a temperature value \cite{doi:10.1002/qua.560440214}.
+When applied to the molecular conformation problem, they found that the GA
+method and the SA method, both applied as global meta-heuristics in conjunction
+with gradient-based local optimisers (conjugate gradient), similarly
+outperformed purely stochastic methods \cite{doi:10.1002/qua.560440214}. Judson
+\textit{et al.} classify points on the model energy surface as being in one of
+three states: knotted and of high energy, unknotted and of low but not minimal
+energy, and unknotted with globally minimised energy
+\cite{doi:10.1002/qua.560440214}. They applied both GA and SA in order to make
+the transition from the first state to the second state before applying local
+optimisation to descend to the bottom of the basin.
 
 Genetic operators for the two dimensional bonded Lennard-Jones problem have
 since been further developed with successful results \cite{PULLAN1998331},
@@ -116,11 +116,119 @@ deeper basins \cite{doi:10.1002/qua.560440214}.
 As simulated annealing has been found to be successful when combined with
 evolutionary algorithms in similar problem domains \cite{PhysRevLett.91.080201},
 this paper will explore its use as an intermediate non-gradient method such that
-the proposed algorithm has three levels: (1) global meta-heuristic, (2),
-intermediate non-gradient optimisation and (3) local gradient-based
-optimisation.
+the proposed algorithm has three levels: global meta-heuristic (GA),
+intermediate non-gradient optimisation (SA) and local gradient-based
+optimisation (BFGS). The performance of this three stage optimisation method
+will be compared with a purely evolutionary algorithm without the intermediate
+step.
 
+\subsection{Genetic Encoding}
 
+Encoding each  molecule as a chain of two-dimensional cartesian coordinates
+would require constraints to be enforced so that the relative orientations and
+unit length bonds are maintained. In order to avoid this, therefore, molecules
+will be encoded as sequences of $N-2$ angles, where $N$ is the number of atoms
+in the molecule and each angle, $\alpha_i$ represents the rotation of the
+segment following atom $a_i$. This encoding scheme means that cartesian
+coordinates must be calculated at each Lennard-Jones potential computation as it
+requires euclidean distances between pairs of atoms to be computed, but results
+in much simpler crossover and mutation operations.
+
+\subsection{Selection \& Crossover Method}
+
+An elitist methodology will be utilised throughout the GA optimisation, meaning
+that the single fittest configuration will be passed on unmodified to subsequent
+generations in order to preserve beneficial traits and provide a mechanism for
+remembering information about the best configuration that has been found so far.
+
+Pairs of parents to be crossed over will then be selected using the Roulette
+method, where the probability for a potential parent to be selected is based on
+a function of its fitness value. The `elite' configurations that were inherited
+from the previous generation will also be candidates for selection using this
+method. Selected parents will undergo one of the following crossover operators
+with equal probabilities of occurring:
+
+\subsubsection{Single-Point Crossover}
+
+A single atom $a_i$ will be randomly selected. Atoms to the left of this point
+in one parent will form the left segment of the child, and the right segment of
+the child will be similarly formed from the atoms to the right of the second
+parent. A second child may be generated by repeating with the opposite segments
+(the right segment from parent one and the left segment from parent two).
+Finally, the angle $\alpha_i$ at the crossover point will be iterated through
+discrete steps until an angle is found which results in the lowest energy, as
+described by Pullan \cite{PULLAN1998331}.
+
+\subsubsection{Two-Point Crossover}
+
+Two crossover points will be selected at random and the molecules will be
+combined similarly to the single-point crossover, with each child containing two
+segments from one parent and one segment from the other. As with the single
+point crossover, the angles of both crossover points will be optimised.
+
+\subsection{Mutation and Intermediate Optimisation}
+
+The mutation mechanism is where the intermediate non-gradient optimisation
+algorithm will be incorporated. In traditional genetic algorithms, mutation has
+a small chance of occurring and is random, resulting in some states which are
+less fit in the hopes that this will later lead to a deeper basin in the search
+space. By incorporating simulated annealing at the mutation stage it is hoped
+that the configuration will be dragged in a downward direction while also
+providing enough stochastic properties to allow boundaries between minima to be
+traversed, which is the goal of any mutation operator.
+
+Mutation will have a low chance of occurring so as not to corrupt fit
+configurations too frequently and lose information provided by the global
+search. Each generation, child nodes that are produced during the crossover
+stage will have a small chance of becoming initial states in the simulated
+annealing search.
+
+\subsubsection{Annealing Schedule}
+
+During annealing random angles are selected and modified by random amounts. If
+the change produces an improved state, it is accepted. If the change produces a
+worsened state, it is accepted with a probability of $1 - e^{\delta E / kT}$
+such that the current `temperature' as well as how bad the state is determines
+whether it is accepted.
+
+The goal at this intermediate stage is not to find the global minimum, but
+merely to provide a more localised search for deeper basins in the vicinity of
+the current configuration; it is hoped that if the GA search has found a local
+minimum in close proximity to the global minimum, the SA stage will take large
+enough steps in order to climb over the boundary into the neighbouring basin
+where it can be finally optimised by the gradient search in the next stage.
+
+Therefore, an annealing schedule that prioritises speed over optimality will be
+chosen.
+
+\subsection{Local Optimisation}
+
+The final stage of the algorithm, after a candidate configuration has been found
+by the GA and its immediate vicinity has been further explored through mutation,
+is to refine the configuration using gradient-based local search. This stage
+will use the gradient of the objective function in order to guarantee that the
+bottom of the current basin will be reached. The quasi-Newton method
+Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at this stage resulting
+in a fast descent towards the current local minimum at each stage.
+
+The coordinates of this locally optimised configuration will also be passed back
+to the GA. This is known as a `Lamarkian' process and has been found to be
+beneficial when used with this problem \cite{doi:10.1002/qua.560440214}.
+
+%\subsection{Implementation}
+
+% \begin{algorithm} \caption{Proposed High-Level Algorithm} \label{algorithm}
+%   \centering \begin{algorithmic} \Procedure{optimise}{} % \State $nn \gets new
+%   Network$ %   \For{$i \gets 0; i <= number\_of\_epochs; i++$} %
+%   \For{$\textit{each data partition of minibatch size}$} %           \State
+%   $\textit{Do forward pass}$ %           \State $\textit{Backpropagate the
+%   resulting error}$ %           \State $\textit{Update the weights
+%   proportionally to their contribution to the error}$ %       \EndFor %
+%   \State $\textit{Shuffle and repartition the data}$ %   \EndFor \State $P
+%   \gets \textit{Initial Population Size}$ \State $population \gets initialise$
+%   \EndProcedure \end{algorithmic}
+	
+% \end{algorithm}
 
 \pagebreak
 
