@@ -25,6 +25,8 @@ def plot(angle_chain, fig_name):
     plt.title(chart_title)
     plt.savefig("./documentation/figure " + fig_name + ".png")
     plt.close()
+    print(x)
+    print(y)
 
 
 if __name__ == "__main__":
