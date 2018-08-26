@@ -12,41 +12,42 @@
 //#define DEBUG
 
 struct Cartesian {
-	double x=0, y=0;
+	double x = 0, y = 0;
 };
 
 struct Bfgs_molecule {
-	double* molecule;
-	double* gradients;
-	Cartesian* cart;
-	int* indices;
+	double *molecule;
+	double *gradients;
+	Cartesian *cart;
+	int *indices;
 	int n_angles;
 	int n_cart;
 	int n_indices;
 	int n_gradient;
 };
 
-typedef void (* crossover_ptr)(const double*, const double*, double*, double*);
-typedef void (* mutation_ptr)(double*);
+typedef void (*crossover_ptr)(const double*, const double*, double*, double*);
+
+typedef void (*mutation_ptr)(double*);
 
 // --------------------- Function Prototypes -------------------------- //
-double lj_potential(Cartesian* cart, int n);
+double lj_potential(Cartesian *cart, int n);
 // -----------------------------------------------------------------------
 
 /**
  * This function is completely random and does not consider knots
  */
-void randomise_mol(double* molecule, int n)
+void randomise_mol(double *molecule, int n)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
 	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i<n; i++)
 		molecule[i] = uniform(gen);
 	molecule[0] = 0;
 }
 
-void print_csv(const double* molecule, double energy, int n_angles)
+void print_csv(const double *molecule, double energy, int n_angles)
 {
 	for (auto i = 0; i<n_angles; i++) {
 		std::cout << molecule[i] << ",";
@@ -55,9 +56,9 @@ void print_csv(const double* molecule, double energy, int n_angles)
 }
 
 // Note: Cart should be n_angles + 1 in length
-void angle_to_cart(const double* angles, Cartesian* cart, int n_angles, int n_cart)
+void angle_to_cart(const double *angles, Cartesian *cart, int n_angles, int n_cart)
 {
-	if (n_cart != n_angles + 1) {
+	if (n_cart!=n_angles+1) {
 		std::cerr << "Incorrect sizes" << std::endl;
 		exit(-1);
 	}
@@ -76,7 +77,7 @@ void angle_to_cart(const double* angles, Cartesian* cart, int n_angles, int n_ca
 /**
  * Calculate the Lennard-Jones potential energy of the given system s
  */
-double lj_potential(Cartesian* cart, int n)
+double lj_potential(Cartesian *cart, int n)
 {
 	double v = 0;
 	for (int i = 0; i<n-1; i++) {
@@ -91,9 +92,9 @@ double lj_potential(Cartesian* cart, int n)
 }
 
 // Length of grads must be equal to s.length-2 and be able to contain doubles
-void lj_gradient(const Cartesian* cart, double* gradients, int n_cart, int n_grad)
+void lj_gradient(const Cartesian *cart, double *gradients, int n_cart, int n_grad)
 {
-	if (n_cart != n_grad + 1) {
+	if (n_cart!=n_grad+1) {
 		std::cerr << "Incorrect array sizes" << std::endl;
 		exit(-1);
 	}
@@ -117,26 +118,26 @@ void lj_gradient(const Cartesian* cart, double* gradients, int n_cart, int n_gra
 // The callback interface to provide objective function and gradient evaluations
 // for liblbfgs
 lbfgsfloatval_t lbfgs_evaluate(
-		void* instance,
-		const lbfgsfloatval_t* x,
-		lbfgsfloatval_t* g,
+		void *instance,
+		const lbfgsfloatval_t *x,
+		lbfgsfloatval_t *g,
 		const int n,
 		const lbfgsfloatval_t step
 )
 {
-	auto bm = (Bfgs_molecule*)instance;
-	if (bm->indices !=nullptr && n != bm->n_indices) {
+	auto bm = (Bfgs_molecule*) instance;
+	if (bm->indices!=nullptr && n!=bm->n_indices) {
 		std::cerr << "Parameter size doesn't match number of indices"
-			      << std::endl;
+		          << std::endl;
 		exit(-1);
 	}
-	if (bm->indices != nullptr) {
-		for (int i = 0; i < bm->n_indices; i++) {
+	if (bm->indices!=nullptr) {
+		for (int i = 0; i<bm->n_indices; i++) {
 			bm->molecule[bm->indices[i]] = x[i];
 		}
 		angle_to_cart(bm->molecule, bm->cart, bm->n_angles, bm->n_cart);
 		lj_gradient(bm->cart, bm->gradients, bm->n_cart, bm->n_gradient);
-		for (int i = 0; i < bm->n_indices; i++) {
+		for (int i = 0; i<bm->n_indices; i++) {
 			g[i] = bm->gradients[bm->indices[i]];
 		}
 	} else {
@@ -147,9 +148,9 @@ lbfgsfloatval_t lbfgs_evaluate(
 }
 
 int lbfgs_progress(
-		void* instance,
-		const lbfgsfloatval_t* x,
-		const lbfgsfloatval_t* g,
+		void *instance,
+		const lbfgsfloatval_t *x,
+		const lbfgsfloatval_t *g,
 		const lbfgsfloatval_t fx,
 		const lbfgsfloatval_t xnorm,
 		const lbfgsfloatval_t gnorm,
@@ -165,19 +166,19 @@ int lbfgs_progress(
 	printf("  xnorm = %f, gnorm = %f, step = %f\n", xnorm, gnorm, step);
 	printf("\n");
 #endif
-	return k >= MAX_LBFGS_ITER;
+	return k>=MAX_LBFGS_ITER;
 }
 
-void single_crossover(const double* p1, const double* p2, double* c1, double* c2, int n)
+void single_crossover(const double *p1, const double *p2, double *c1, double *c2, int n)
 {
-	int cp = rand() % n;
+	int cp = rand()%n;
 	std::copy(p1, p1+cp, c1);
 	std::copy(p2+cp, p2+n, c1+cp);
 	std::copy(p2, p2+cp, c2);
 	std::copy(p1+cp, p1+n, c2+cp);
 }
 
-void single_mutation(double* s)
+void single_mutation(double *s)
 {
 	return;
 }
@@ -185,9 +186,9 @@ void single_mutation(double* s)
 // Create 2 parents, if either is better than the parent, replace the parent
 // with it. Constant pop size.
 void ga(
-		double** population,
-		const crossover_ptr* crossovers,
-		const mutation_ptr* mutations,
+		double **population,
+		const crossover_ptr *crossovers,
+		const mutation_ptr *mutations,
 		int n_crossovers,
 		int n_mutations,
 		int max_gen
