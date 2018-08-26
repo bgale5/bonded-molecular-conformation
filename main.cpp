@@ -8,6 +8,7 @@
 #include <cstring>
 
 #define MAX_LBFGS_ITER 99
+#define MISC_BUF 100
 
 //#define DEBUG
 
@@ -100,7 +101,7 @@ void lj_gradient(const Cartesian *cart, double *gradients, int n_cart, int n_gra
 	}
 	for (int m = 0; m<n_grad; m++) {
 		double dv = 0;
-		for (int i = 0; i<m; i++) {
+		for (int i = 0; i < m; i++) {
 			for (int j = m+1; j<n_cart; j++) {
 				double dx = cart[i].x-cart[j].x;
 				double dy = cart[i].y-cart[j].y;
@@ -132,12 +133,12 @@ lbfgsfloatval_t lbfgs_evaluate(
 		exit(-1);
 	}
 	if (bm->indices!=nullptr) {
-		for (int i = 0; i<bm->n_indices; i++) {
+		for (int i = 0; i < bm->n_indices; i++) {
 			bm->molecule[bm->indices[i]] = x[i];
 		}
 		angle_to_cart(bm->molecule, bm->cart, bm->n_angles, bm->n_cart);
 		lj_gradient(bm->cart, bm->gradients, bm->n_cart, bm->n_gradient);
-		for (int i = 0; i<bm->n_indices; i++) {
+		for (int i = 0; i < bm->n_indices; i++) {
 			g[i] = bm->gradients[bm->indices[i]];
 		}
 	} else {
@@ -176,6 +177,15 @@ void single_crossover(const double *p1, const double *p2, double *c1, double *c2
 	std::copy(p2+cp, p2+n, c1+cp);
 	std::copy(p2, p2+cp, c2);
 	std::copy(p1+cp, p1+n, c2+cp);
+
+	// Optimise at the crossover point
+	double grads[MISC_BUF];
+	Cartesian cart[MISC_BUF];
+	Bfgs_molecule bm = {c1, grads, cart, nullptr, n, n+1, 0, n};
+	lbfgsfloatval_t res;
+	lbfgs(n, c1, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
+	bm.molecule = c2;
+	lbfgs(n, c2, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 }
 
 void single_mutation(double *s)
@@ -200,24 +210,6 @@ void ga(
 int main()
 {
 	srand((unsigned int) time(nullptr));
-	double molecule[3] = {0, M_PI/6, M_PI/6};
-	double subset[1] = {0};
-	int indices[1] = {1};
-	//randomise_mol(molecule, 4);
-	Bfgs_molecule bm = {
-			new double[3],
-			new double[3],
-			new Cartesian[4],
-			indices,
-			3,
-			4,
-			1,
-			3
-	};
 
-	lbfgsfloatval_t res = 0;
-	int ret = lbfgs(1, subset, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
-	print_csv(molecule, res, 3);
-	//std::cout << "Ret: " << ret << std::endl;
 	return 0;
 }
