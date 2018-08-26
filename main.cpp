@@ -12,25 +12,18 @@
 //#define DEBUG
 
 struct Cartesian {
-	double x, y;
+	double x=0, y=0;
 };
 
 struct Bfgs_molecule {
 	double* molecule;
-	bool* fixed;
-
-	explicit Bfgs_molecule(int n)
-	{
-		molecule = new double[n];
-		fixed = new bool[n];
-		memset(molecule, 0, sizeof(molecule) * n);
-		memset(fixed, 0, sizeof(fixed) * n);
-	}
-	~Bfgs_molecule()
-	{
-		delete [] molecule;
-		delete [] fixed;
-	}
+	double* gradients;
+	Cartesian* cart;
+	int* indices;
+	int n_angles;
+	int n_cart;
+	int n_indices;
+	int n_gradient;
 };
 
 typedef void (* crossover_ptr)(const double*, const double*, double*, double*);
@@ -68,13 +61,15 @@ void angle_to_cart(const double* angles, Cartesian* cart, int n_angles, int n_ca
 		std::cerr << "Incorrect sizes" << std::endl;
 		exit(-1);
 	}
-	cart[0] = {0, 0};
+	cart[0].x = 0;
+	cart[0].y = 0;
 	double phi = 0;
 	for (int i = 0; i<n_angles; i++) {
 		phi += angles[i];
 		double x = cart[i].x+cos(phi);
 		double y = cart[i].y+sin(phi);
-		cart[i+1] = {x, y};
+		cart[i+1].x = x;
+		cart[i+1].y = y;
 	}
 }
 
@@ -122,16 +117,33 @@ void lj_gradient(const Cartesian* cart, double* gradients, int n_cart, int n_gra
 // The callback interface to provide objective function and gradient evaluations
 // for liblbfgs
 lbfgsfloatval_t lbfgs_evaluate(
-		void* fixed,
+		void* instance,
 		const lbfgsfloatval_t* x,
 		lbfgsfloatval_t* g,
 		const int n,
 		const lbfgsfloatval_t step
 )
 {
-//	auto s = (Molecule*)molecule;
-//	lj_gradient(x, g, n);
-//	return lj_potential(*s);
+	auto bm = (Bfgs_molecule*)instance;
+	if (bm->indices !=nullptr && n != bm->n_indices) {
+		std::cerr << "Parameter size doesn't match number of indices"
+			      << std::endl;
+		exit(-1);
+	}
+	if (bm->indices != nullptr) {
+		for (int i = 0; i < bm->n_indices; i++) {
+			bm->molecule[bm->indices[i]] = x[i];
+		}
+		angle_to_cart(bm->molecule, bm->cart, bm->n_angles, bm->n_cart);
+		lj_gradient(bm->cart, bm->gradients, bm->n_cart, bm->n_gradient);
+		for (int i = 0; i < bm->n_indices; i++) {
+			g[i] = bm->gradients[bm->indices[i]];
+		}
+	} else {
+		angle_to_cart(x, bm->cart, n, bm->n_cart);
+		lj_gradient(bm->cart, g, bm->n_cart, bm->n_gradient);
+	}
+	return lj_potential(bm->cart, bm->n_cart);
 }
 
 int lbfgs_progress(
@@ -158,8 +170,7 @@ int lbfgs_progress(
 
 void single_crossover(const double* p1, const double* p2, double* c1, double* c2, int n)
 {
-	//int cp = rand() % (int)p1->angles.size();
-	int cp = 2;
+	int cp = rand() % n;
 	std::copy(p1, p1+cp, c1);
 	std::copy(p2+cp, p2+n, c1+cp);
 	std::copy(p2, p2+cp, c2);
@@ -188,17 +199,24 @@ void ga(
 int main()
 {
 	srand((unsigned int) time(nullptr));
-	double molecule[3] = {0, M_PI/6, -M_PI/2};
-	//randomise_mol(molecule, 5);
-	Cartesian cart[4];
-	angle_to_cart(molecule, cart, 3, 4);
-	double energy = lj_potential(cart, 4);
-	print_csv(molecule, energy, 3);
-	double gradients[3] = {0};
-	lj_gradient(cart, gradients, 4, 3);
-	for (int i = 0; i < 3; i++)
-	{
-		std::cout << gradients[i] << std::endl;
-	}
+	double molecule[3] = {0, M_PI/6, M_PI/6};
+	double subset[1] = {0};
+	int indices[1] = {1};
+	//randomise_mol(molecule, 4);
+	Bfgs_molecule bm = {
+			new double[3],
+			new double[3],
+			new Cartesian[4],
+			indices,
+			3,
+			4,
+			1,
+			3
+	};
+
+	lbfgsfloatval_t res = 0;
+	int ret = lbfgs(1, subset, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
+	print_csv(molecule, res, 3);
+	//std::cout << "Ret: " << ret << std::endl;
 	return 0;
 }
