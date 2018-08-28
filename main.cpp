@@ -207,30 +207,30 @@ void single_crossover(
 	lbfgs(1, c+cp, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 }
 
-//void single_mutation(double *m, int n, Cartesian *cart, int n_cart)
-//{
-//	if (n != n_cart - 1) {
-//		std::cerr << "Sizes don't match" << std::endl;
-//		exit(-1);
-//	}
-//	std::random_device rd;
-//	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
-//	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
-//	angle_to_cart(m, cart, n, n_cart);
-//	double initial_e = lj_potential(cart, n);
-//	double e;
-//	do {
-//		int mp = rand() % n;
-//		double prev = m[mp];
-//		m[mp] = uniform(gen);
-//		angle_to_cart(m, cart, n, n_cart);
-//		e = lj_potential(cart, n_cart);
-//		if (e > initial_e) // Revert
-//			m[mp] = prev;
-//	} while (e > initial_e);
-//}
+void guided_single_mutation(double* m, int n, Cartesian* cart, int n_cart)
+{
+	if (n != n_cart - 1) {
+		std::cerr << "Sizes don't match" << std::endl;
+		exit(-1);
+	}
+	std::random_device rd;
+	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
+	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
+	angle_to_cart(m, cart, n, n_cart);
+	double initial_e = lj_potential(cart, n);
+	double e;
+	do {
+		int mp = rand() % n;
+		double prev = m[mp];
+		m[mp] = uniform(gen);
+		angle_to_cart(m, cart, n, n_cart);
+		e = lj_potential(cart, n_cart);
+		if (e > initial_e) // Revert
+			m[mp] = prev;
+	} while (e > initial_e);
+}
 
-void single_mutation(double *m, int n, Cartesian *cart, int n_cart)
+void stretch_mutation(double* m, int n, Cartesian* cart, int n_cart)
 {
 	if (n != n_cart - 1) {
 		std::cerr << "Sizes don't match" << std::endl;
@@ -251,7 +251,31 @@ void single_mutation(double *m, int n, Cartesian *cart, int n_cart)
 	}
 }
 
+void naive_single_mutation(double *m, int n, Cartesian *cart, int n_cart)
+{
+	if (n != n_cart - 1) {
+		std::cerr << "Sizes don't match" << std::endl;
+		exit(-1);
+	}
+	std::random_device rd;
+	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
+	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
+	m[rand()%n] = uniform(gen);
+}
 
+void naive_multi_mutation(double *m, int n, Cartesian *cart, int n_cart)
+{
+	if (n != n_cart - 1) {
+		std::cerr << "Sizes don't match" << std::endl;
+		exit(-1);
+	}
+	std::random_device rd;
+	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
+	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
+	int repeat = rand() % n;
+	for (int i = 0; i < repeat; i++)
+		m[rand()%n] = uniform(gen);
+}
 
 // Create 2 parents, if either is better than the parent, replace the parent
 // with it. Constant pop size.
@@ -315,16 +339,17 @@ void ga(
 			double res;
 			lbfgs(n_angles, pop[i].m, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 		}
-	}
-	// Get all the fitnesses for sorting
-	for (int i = 0; i < p; i++) {
-		angle_to_cart(pop[i].m, cart_buf, n_angles, n_angles+1);
-		pop[i].f = lj_potential(cart_buf, n_angles+1);
-	}
-	std::sort(pop, pop+p, [](const Candidate &a, const Candidate&b) -> bool {
-		return a.f < b.f;
-	});
 
+		// Get all the fitnesses for sorting
+		for (int i = 0; i < p; i++) {
+			angle_to_cart(pop[i].m, cart_buf, n_angles, n_angles+1);
+			pop[i].f = lj_potential(cart_buf, n_angles+1);
+		}
+		std::sort(pop, pop+p, [](const Candidate &a, const Candidate&b) -> bool {
+			return a.f < b.f;
+		});
+
+	}
 
 	// Return the best solution
 	std::copy(pop[0].m, pop[0].m + n_angles, sol);
@@ -344,15 +369,15 @@ void ga(
 
 int main()
 {
-	const int n_angles = 61;
+	const int n_angles = 29;
 	const int n_cart = n_angles + 1;
 	const int n_gens = 50;
 	srand((unsigned int) time(nullptr));
 	crossover_ptr cross[1] = {single_crossover};
-	mutation_ptr mut[1] = {single_mutation};
+	mutation_ptr mut[4] = {stretch_mutation, guided_single_mutation, naive_single_mutation, naive_multi_mutation};
 	double sol[n_angles];
 
-	ga(cross, mut, sol, 6, 1, 1, n_angles, n_gens);
+	ga(cross, mut, sol, 12, 1, 4, n_angles, n_gens);
 	Cartesian cart[n_cart];
 	angle_to_cart(sol, cart, n_angles, n_cart);
 	double e = lj_potential(cart, n_cart);
