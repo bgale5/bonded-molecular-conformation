@@ -9,6 +9,7 @@
 
 #define MAX_LBFGS_ITER 99
 #define MISC_BUF 100
+#define MUTATION_RATE 0.5f
 
 //#define DEBUG
 
@@ -16,9 +17,9 @@ struct Cartesian {
 	double x = 0, y = 0;
 };
 
-struct Fitness_pair {
-	double *mol;
-	double fitness;
+struct Candidate {
+	double *m;
+	double f;
 };
 
 struct Bfgs_molecule {
@@ -35,7 +36,6 @@ struct Bfgs_molecule {
 typedef void (*crossover_ptr)(
 	const double*,
 	const double*,
-	double*,
 	double*,
 	int,
 	double*,
@@ -188,8 +188,7 @@ int lbfgs_progress(
 void single_crossover(
 		const double *p1,
 		const double *p2,
-		double *c1,
-		double *c2,
+		double *c,
 		int n,
 		double *grads,
 		Cartesian *cart,
@@ -198,18 +197,38 @@ void single_crossover(
 )
 {
 	int cp = rand()%n;
-	std::copy(p1, p1+cp, c1);
-	std::copy(p2+cp, p2+n, c1+cp);
-	std::copy(p2, p2+cp, c2);
-	std::copy(p1+cp, p1+n, c2+cp);
+	std::copy(p1, p1+cp, c);
+	std::copy(p2+cp, p2+n, c+cp);
 
 	// Optimise at the crossover point
-	Bfgs_molecule bm = {c1, grads, cart, nullptr, n, n+1, 0, n};
+	int indices[1] = {cp};
+	Bfgs_molecule bm = {c, grads, cart, indices, n, n+1, 1, n};
 	lbfgsfloatval_t res;
-	lbfgs(n, c1, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
-	bm.molecule = c2;
-	lbfgs(n, c2, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
+	lbfgs(1, c+cp, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 }
+
+//void single_mutation(double *m, int n, Cartesian *cart, int n_cart)
+//{
+//	if (n != n_cart - 1) {
+//		std::cerr << "Sizes don't match" << std::endl;
+//		exit(-1);
+//	}
+//	std::random_device rd;
+//	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
+//	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
+//	angle_to_cart(m, cart, n, n_cart);
+//	double initial_e = lj_potential(cart, n);
+//	double e;
+//	do {
+//		int mp = rand() % n;
+//		double prev = m[mp];
+//		m[mp] = uniform(gen);
+//		angle_to_cart(m, cart, n, n_cart);
+//		e = lj_potential(cart, n_cart);
+//		if (e > initial_e) // Revert
+//			m[mp] = prev;
+//	} while (e > initial_e);
+//}
 
 void single_mutation(double *m, int n, Cartesian *cart, int n_cart)
 {
@@ -219,20 +238,19 @@ void single_mutation(double *m, int n, Cartesian *cart, int n_cart)
 	}
 	std::random_device rd;
 	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
-	std::uniform_real_distribution<double> uniform(-M_PI, M_PI);
-	angle_to_cart(m, cart, n, n_cart);
-	double initial_e = lj_potential(cart, n);
-	double e;
-	do {
-		int mp = rand() % n;
-		double prev = m[mp];
-		m[mp] = uniform(gen);
-		angle_to_cart(m, cart, n, n_cart);
-		e = lj_potential(cart, n_cart);
-		if (e > initial_e) // Revert
-			m[mp] = prev;
-	} while (e > initial_e);
+	std::uniform_real_distribution<double> uniform(-M_PI/180.0, M_PI/180.0);
+	int mp = rand() % n;
+	if (mp < n - mp) {
+		for (int i = 0; i < mp; i++) {
+			m[i] = uniform(gen);
+		}
+	} else {
+		for (int i = mp; i < n; i++) {
+			m[i] = uniform(gen);
+		}
+	}
 }
+
 
 
 // Create 2 parents, if either is better than the parent, replace the parent
@@ -249,33 +267,44 @@ void ga(
 )
 {
 	int p = n_pop * 2;
-	auto pop = new double*[p];
+	auto pop = new Candidate[p];
 	auto grads = new double[n_angles];
 	auto fitness_buf = new double[p];
 	auto cart_buf = new Cartesian[n_angles + 1];
+	double global_best = std::numeric_limits<double>::max();
+	int best_gen = 0;
 	Bfgs_molecule bm;
 	for (int i = 0; i < p; i++) {
-		pop[i] = new double[n_angles];
-		randomise_mol(pop[i], n_angles);
+		pop[i].m = new double[n_angles];
+		randomise_mol(pop[i].m, n_angles);
 	}
 	for (int g = 0; g < max_gen; g++) {
 		// Cross each of the best half with a random partner, also from the best half
-		for (int i = 0; i < n_pop; i++) {
-			double *p1 = pop[i];
-			int partner = rand() % n_pop;
-			double *p2 = pop[partner];
-			double *c1 = pop[i + n_pop];
-			double *c2 = pop[partner + n_pop];
-			cross[rand() % n_cross](p1, p2, c1, c2, n_angles, grads, cart_buf, n_angles, n_angles+1);
+		for (int c = n_pop; c < p; c++) {
+			Candidate *p1 = &pop[rand() % n_pop];
+			Candidate *p2 = &pop[rand() % n_pop];
+			Candidate *child  = &pop[c];
+			cross[rand()%n_cross](p1->m, p2->m, child->m, n_angles, grads, cart_buf, n_angles, n_angles+1);
 		}
+
+		// Get all the fitnesses for sorting
+		for (int i = 0; i < p; i++) {
+			angle_to_cart(pop[i].m, cart_buf, n_angles, n_angles+1);
+			pop[i].f = lj_potential(cart_buf, n_angles+1);
+		}
+		std::sort(pop, pop+p, [](const Candidate &a, const Candidate&b) -> bool {
+			return a.f < b.f;
+		});
+
 		// Mutate all children with a small chance
-		for (int i = n_pop; i < p; i++) {
-			//mut[(int)rand() % n_mut](pop[i], n_angles, cart_buf, n_angles+1);
-			single_mutation(pop[i], n_angles, cart_buf, n_angles+1);
+		for (int i = 1; i < p; i++) {
+			if (fabs(pop[i].f - pop[i-1].f) < 1.0 || pop[i].f > 0)
+				mut[rand() % n_mut](pop[i].m, n_angles, cart_buf, n_angles+1);
 		}
+
 		// Locally Optimise entire population
 		for (int i = 0; i < p; i++) {
-			bm.molecule = pop[i];
+			bm.molecule = pop[i].m;
 			bm.indices = nullptr;
 			bm.gradients = grads;
 			bm.cart = cart_buf;
@@ -284,32 +313,29 @@ void ga(
 			bm.n_indices = 0;
 			bm.n_gradient = n_angles;
 			double res;
-			lbfgs(n_angles, pop[i], &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
+			lbfgs(n_angles, pop[i].m, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 		}
-//		// Get all the fitnesses for sorting
-//		for (int i = 0; i < p; i++) {
-//			angle_to_cart(pop[i], cart_buf, n_angles, n_angles+1);
-//			fitness_buf[i] = lj_potential(cart_buf, n_angles+1);
-//		}
-//		std::sort(pop, pop+p, [pop, fitness_buf] (double *&a, double *&b) -> bool {
-//			unsigned long a_index = &a - pop;
-//			unsigned long b_index = &b - pop;
-//			return fitness_buf[a_index] < fitness_buf[b_index];
-//		});
 	}
+	// Get all the fitnesses for sorting
+	for (int i = 0; i < p; i++) {
+		angle_to_cart(pop[i].m, cart_buf, n_angles, n_angles+1);
+		pop[i].f = lj_potential(cart_buf, n_angles+1);
+	}
+	std::sort(pop, pop+p, [](const Candidate &a, const Candidate&b) -> bool {
+		return a.f < b.f;
+	});
+
 
 	// Return the best solution
-	std::copy(pop[0], pop[0] + n_angles, sol);
+	std::copy(pop[0].m, pop[0].m + n_angles, sol);
 
 	for (int i = 0; i < n_pop; i++) {
-		angle_to_cart(pop[i], cart_buf, n_angles, n_angles+1);
-		double e = lj_potential(cart_buf, n_angles+1);
-		print_csv(pop[i], e, n_angles);
+		print_csv(pop[i].m, pop[i].f, n_angles);
 	}
 
 	// cleanup
 	for (int i = 0; i < n_pop; i++)
-		delete [] pop[i];
+		delete [] pop[i].m;
 	delete [] pop;
 	delete [] fitness_buf;
 	delete [] cart_buf;
@@ -318,9 +344,9 @@ void ga(
 
 int main()
 {
-	const int n_angles = 30;
-	const int n_cart = 31;
-	const int n_gens = 10;
+	const int n_angles = 61;
+	const int n_cart = n_angles + 1;
+	const int n_gens = 50;
 	srand((unsigned int) time(nullptr));
 	crossover_ptr cross[1] = {single_crossover};
 	mutation_ptr mut[1] = {single_mutation};
@@ -331,5 +357,5 @@ int main()
 	angle_to_cart(sol, cart, n_angles, n_cart);
 	double e = lj_potential(cart, n_cart);
 	//print_csv(sol, e, n_angles);
-	return 0;
+
 }
