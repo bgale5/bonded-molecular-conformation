@@ -36,7 +36,7 @@ struct Bfgs_molecule {
 	int n_gradient;
 };
 
-typedef void (*crossover_ptr)(
+typedef void (*Crossover_ptr)(
 	const double*,
 	const double*,
 	double*,
@@ -47,7 +47,7 @@ typedef void (*crossover_ptr)(
 	int
 );
 
-typedef void (*mutation_ptr)(double*, int, Cartesian*, int);
+typedef void (*Mutation_ptr)(double*, int, Cartesian*, int);
 
 // --------------------- Function Prototypes -------------------------- //
 double lj_potential(Cartesian *cart, int n);
@@ -210,34 +210,34 @@ void single_crossover(
 	lbfgs(1, c+cp, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 }
 
-void double_crossover(
-		const double *p1,
-		const double *p2,
-		double *c,
-		int n,
-		double *grads,
-		Cartesian *cart,
-		int n_grad,
-		int n_cart
-)
-{
-	int cpa = rand() % n;
-	int cpb = rand() % n;
-	if (cpa > cpb)
-		std::swap(cpa, cpb);
-	std::copy(p1, p1+cpa, c);
-	std::copy(p2+cpa, p2+cpb, c+cpa);
-	std::copy(p1+cpb, p1+n, c+cpb);
+//void double_crossover(
+//		const double *p1,
+//		const double *p2,
+//		double *c,
+//		int n,
+//		double *grads,
+//		Cartesian *cart,
+//		int n_grad,
+//		int n_cart
+//)
+//{
+//	int cpa = rand() % n;
+//	int cpb = rand() % n;
+//	if (cpa > cpb)
+//		std::swap(cpa, cpb);
+//	std::copy(p1, p1+cpa, c);
+//	std::copy(p2+cpa, p2+cpb, c+cpa);
+//	std::copy(p1+cpb, p1+n, c+cpb);
+//
+//	// Optimise at the crossover points
+//	int indices[2] = {cpa, cpb};
+//	double x[2] = {c[cpa], c[cpb]};
+//	Bfgs_molecule bm = {c, grads, cart, indices, n, n+1, 2, n};
+//	lbfgsfloatval_t res;
+//	lbfgs(2, x, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
+//}
 
-	// Optimise at the crossover points
-	int indices[2] = {cpa, cpb};
-	double x[2] = {c[cpa], c[cpb]};
-	Bfgs_molecule bm = {c, grads, cart, indices, n, n+1, 2, n};
-	lbfgsfloatval_t res;
-	lbfgs(2, x, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
-}
-
-void guided_single_mutation(double* m, int n, Cartesian* cart, int n_cart)
+void guided_mutation(double* m, int n, Cartesian* cart, int n_cart)
 {
 	if (n != n_cart - 1) {
 		std::cerr << "Sizes don't match" << std::endl;
@@ -308,11 +308,38 @@ void naive_multi_mutation(double *m, int n, Cartesian *cart, int n_cart)
 		m[rand()%n] = uniform(gen);
 }
 
+void sa_mutation(double *m, int n, Cartesian *cart, int n_cart)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd()); // New Mersenne-Twister generator seeded with rd
+	std::uniform_real_distribution<double> uniform_angle(-M_PI, M_PI);
+	std::uniform_real_distribution<double> uniform_percentage(0, 1);
+	if (n != n_cart -1) {
+		std::cerr << "Sizes don't match" << std::endl;
+		exit(-1);
+	}
+	angle_to_cart(m, cart, n, n_cart);
+	double e =  lj_potential(cart, n);
+	for (int T = 100; T > 0; T--) {
+		int mp = rand() % n;
+		double prev = m[mp]; // Remember the current state
+		m[mp] = uniform_angle(gen);
+		angle_to_cart(m, cart, n, n_cart);
+		double e_prime = lj_potential(cart, n);
+		double r = uniform_percentage(gen);
+		if (e_prime < e || exp(-(e_prime - e)/T) > r) {
+			e = e_prime;
+		} else {
+			m[mp] = prev; // revert
+		}
+	}
+}
+
 // Create 2 parents, if either is better than the parent, replace the parent
 // with it. Constant pop size.
 void ga(
-		const crossover_ptr *cross,
-		const mutation_ptr *mut,
+		const Crossover_ptr *cross,
+		const Mutation_ptr *mut,
 		double *sol,
 		int n_pop,
 		int n_cross,
@@ -402,18 +429,18 @@ void ga(
 
 int main()
 {
-	const int n_angles = 54;
+	const int n_angles = 29;
 	const int n_cart = n_angles + 1;
 	const int n_gens = 100;
 	srand((unsigned int) time(nullptr));
-	crossover_ptr cross[2] = {single_crossover, double_crossover};
-	mutation_ptr mut[4] = {stretch_mutation, guided_single_mutation, naive_single_mutation, naive_multi_mutation};
+	Crossover_ptr cross[1] = {single_crossover}; //double_crossover};
+	Mutation_ptr mut[3] = {sa_mutation, guided_mutation, stretch_mutation};
 	double sol[n_angles];
 
-	ga(cross, mut, sol, 12, 2, 4, n_angles, n_gens);
+	ga(cross, mut, sol, 12, 1, 3, n_angles, n_gens);
 	Cartesian cart[n_cart];
 	angle_to_cart(sol, cart, n_angles, n_cart);
 	double e = lj_potential(cart, n_cart);
-	//print_csv(sol, e, n_angles);
 
+	return 0;
 }
