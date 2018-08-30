@@ -8,10 +8,13 @@
 #include <cstring>
 
 #define MAX_LBFGS_ITER 99
+#define MUTATION_CAP 10
 #define MISC_BUF 100
 #define MUTATION_RATE 0.5f
 
 //#define DEBUG
+
+const double optimal[] = {0, 0, -1.0, -3.0, -5.1, -7.2, -9.3, -12.5, -14.7, -16.9, -20.1, -22.3, -25.5, -27.8, -31.0,-33.2, -36.5, -38.7, -42.0, -45.3,-47.5, -50.8, -53.0, -56.3, -59.6,-61.8, -65.1, -68.4, -70.7, -74.0,-77.2, -79.5, -82.8, -86.1, -88.3,-91.7, -95.0, -98.3, -100.5, -103.8,-107.1, -109.4, -112.7, -116.0, -119.3,-121.6, -124.9, -128.6, -131.5, -133.8,-137.1, -140.5, -143.7, -146.0, -149.3,-152.7};
 
 struct Cartesian {
 	double x = 0, y = 0;
@@ -207,6 +210,33 @@ void single_crossover(
 	lbfgs(1, c+cp, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
 }
 
+void double_crossover(
+		const double *p1,
+		const double *p2,
+		double *c,
+		int n,
+		double *grads,
+		Cartesian *cart,
+		int n_grad,
+		int n_cart
+)
+{
+	int cpa = rand() % n;
+	int cpb = rand() % n;
+	if (cpa > cpb)
+		std::swap(cpa, cpb);
+	std::copy(p1, p1+cpa, c);
+	std::copy(p2+cpa, p2+cpb, c+cpa);
+	std::copy(p1+cpb, p1+n, c+cpb);
+
+	// Optimise at the crossover points
+	int indices[2] = {cpa, cpb};
+	double x[2] = {c[cpa], c[cpb]};
+	Bfgs_molecule bm = {c, grads, cart, indices, n, n+1, 2, n};
+	lbfgsfloatval_t res;
+	lbfgs(2, x, &res, lbfgs_evaluate, lbfgs_progress, &bm, nullptr);
+}
+
 void guided_single_mutation(double* m, int n, Cartesian* cart, int n_cart)
 {
 	if (n != n_cart - 1) {
@@ -219,15 +249,16 @@ void guided_single_mutation(double* m, int n, Cartesian* cart, int n_cart)
 	angle_to_cart(m, cart, n, n_cart);
 	double initial_e = lj_potential(cart, n);
 	double e;
+	int i = 0;
 	do {
 		int mp = rand() % n;
 		double prev = m[mp];
 		m[mp] = uniform(gen);
 		angle_to_cart(m, cart, n, n_cart);
 		e = lj_potential(cart, n_cart);
-		if (e > initial_e) // Revert
+		if (e > initial_e && i < MUTATION_CAP) // Revert
 			m[mp] = prev;
-	} while (e > initial_e);
+	} while (i++ < MUTATION_CAP && e > initial_e);
 }
 
 void stretch_mutation(double* m, int n, Cartesian* cart, int n_cart)
@@ -349,6 +380,8 @@ void ga(
 			return a.f < b.f;
 		});
 
+		if (fabs(optimal[n_angles+1] - pop[0].f) <= 0.01)
+			break;
 	}
 
 	// Return the best solution
@@ -369,15 +402,15 @@ void ga(
 
 int main()
 {
-	const int n_angles = 29;
+	const int n_angles = 54;
 	const int n_cart = n_angles + 1;
-	const int n_gens = 50;
+	const int n_gens = 100;
 	srand((unsigned int) time(nullptr));
-	crossover_ptr cross[1] = {single_crossover};
+	crossover_ptr cross[2] = {single_crossover, double_crossover};
 	mutation_ptr mut[4] = {stretch_mutation, guided_single_mutation, naive_single_mutation, naive_multi_mutation};
 	double sol[n_angles];
 
-	ga(cross, mut, sol, 12, 1, 4, n_angles, n_gens);
+	ga(cross, mut, sol, 12, 2, 4, n_angles, n_gens);
 	Cartesian cart[n_cart];
 	angle_to_cart(sol, cart, n_angles, n_cart);
 	double e = lj_potential(cart, n_cart);
