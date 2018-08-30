@@ -6,6 +6,7 @@
 #include <ctime>
 #include <numeric>
 #include <cstring>
+#include <cinttypes>
 
 #define MAX_LBFGS_ITER 99
 #define MUTATION_CAP 10
@@ -427,20 +428,23 @@ void ga(
 	delete [] grads;
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	const int n_angles = 29;
-	const int n_cart = n_angles + 1;
-	const int n_gens = 100;
+	if (argc < 3) {
+		std::cout << "Usage: bonded_molecular_conformation <n> <number of generations>"
+			      << std::endl;
+		exit(-1);
+	}
+	const int n_cart = (int)std::strtol(argv[1], nullptr, 0);
+	const int n_angles = n_cart - 1;
+	const int n_gens = (int)std::strtol(argv[2], nullptr, 0);
 	srand((unsigned int) time(nullptr));
 	Crossover_ptr cross[1] = {single_crossover}; //double_crossover};
-	Mutation_ptr mut[3] = {sa_mutation, guided_mutation, stretch_mutation};
+	Mutation_ptr mut[3] = {naive_single_mutation, guided_mutation, stretch_mutation};
 	double sol[n_angles];
-
-	ga(cross, mut, sol, 12, 1, 3, n_angles, n_gens);
-	Cartesian cart[n_cart];
-	angle_to_cart(sol, cart, n_angles, n_cart);
-	double e = lj_potential(cart, n_cart);
+	for (int i = 0; i < 3; i++) {
+		ga(cross, mut, sol, 12, 1, 3, n_angles, n_gens);
+	}
 
 	return 0;
 }

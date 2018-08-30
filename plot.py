@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from sys import stdin
+from sys import stdin, argv
 import matplotlib.pyplot as plt
 from math import cos, sin
 
@@ -23,15 +23,19 @@ def plot(angle_chain, fig_name):
         y.append(y[-1] + sin(cumulative))
     plt.plot(x, y, 'o-')
     plt.title(chart_title)
-    plt.savefig("./documentation/figure " + fig_name + ".png")
+    plt.savefig(fig_name)
     plt.close()
-    print(x)
-    print(y)
+    # print(x)
+    # print(y)
 
 
 if __name__ == "__main__":
     count = 0
     for line in stdin:
         print(line)
-        plot(line, str(count))
+        if argv[1] != '':
+            figname = argv[1] + '/' + "Figure " + str(count)
+        else:
+            figname = "Figure " + str(count)
+        plot(line, figname)
         count += 1
