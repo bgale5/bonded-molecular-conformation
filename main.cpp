@@ -55,9 +55,6 @@ typedef void (*Mutation_ptr)(double*, int, Cartesian*, int);
 double lj_potential(Cartesian *cart, int n);
 // -----------------------------------------------------------------------
 
-/**
- * This function is completely random and does not consider knots
- */
 void randomise_mol(double *molecule, int n)
 {
 	std::random_device rd;
@@ -129,7 +126,7 @@ void lj_gradient(const Cartesian *cart, double *gradients, int n_cart, int n_gra
 			for (int j = m+1; j<n_cart; j++) {
 				double dx = cart[i].x-cart[j].x;
 				double dy = cart[i].y-cart[j].y;
-				double r_sqrd = pow(dx, 2)+pow(dy, 2);
+				double r_sqrd = (dx * dx) + (dy * dy);
 				double r_sqrd_4 = r_sqrd * r_sqrd * r_sqrd * r_sqrd;
 				double r_sqrd_7 = r_sqrd_4 * r_sqrd * r_sqrd * r_sqrd;
 				double res = (1.0/r_sqrd_7-1.0/r_sqrd_4) * (dx*(cart[m].y-cart[j].y) +dy*(cart[j].x-cart[m].x));
@@ -430,7 +427,7 @@ void ga(
 		print_csv(pop[i].m, pop[i].f, n_angles);
 	}
 
-	std::cout << best_gen << std::endl;
+	//std::cout << best_gen << std::endl;
 
 	// cleanup
 	for (int i = 0; i < n_pop; i++)
