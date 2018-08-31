@@ -7,6 +7,7 @@
 #include <numeric>
 #include <cstring>
 #include <cinttypes>
+#include <algorithm>
 
 #define MAX_LBFGS_ITER 99
 #define MUTATION_CAP 10

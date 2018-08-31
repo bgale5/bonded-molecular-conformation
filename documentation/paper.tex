@@ -5,9 +5,9 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{listings}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
 \usepackage{amsmath}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+
 	
 \title{Evolutionary Algorithm for the Bonded Molecular Conformation Problem}
 \author{Bennett Gale}
@@ -25,20 +25,30 @@ The model molecular energy minimisation problem involves the geometric
 configuration of a chain of atoms in two dimensions, each connected by rigid
 bonds of unit length, such that the total potential energy yielded by the sum of
 individual Lennard-Jones potentials is globally minimised. The total potential
-energy of the cluster is given by
+energy of the system is given by
 $$V(r)=\sum^{N-1}_{i=1}\sum^{N}_{j=i+1}\left(r^{-12}_{ij}-2r^{-6}_{ij}\right)$$
 Where $r$ is the euclidean distance between a pair of atoms and $N$ is the
 number of atoms in the chain.
 
-The energy minimisation problem is historically difficult because of the
+The bound energy minimisation problem is historically difficult because of the
 exponential relationship between the locally stable structures and the number of
 atoms, $N$, in the molecule. That is, as the size of the cluster increases, the
 number of local minima increases exponentially such that when $N$ approaches
 100, there exist more than $10^{140}$ minima \cite{DAVEN1996195}. It is
-therefore necessary to employ sophisticated search algorithms in order to make
+therefore necessary to employ global search algorithms in order to make
 larger input sizes attainable.
 
-Section~\ref{litreview} will discuss some of the research that has already taken
+The primary difficulty encountered with the bonded variation of the problem (as
+opposed to the unbound `Lennard-Jones cluster' problem), is that when atomic
+bonds overlap, a large amount of energy is required to pull an atom through the
+knot \cite{doi:10.1002/qua.560440214}. This is particularly problematic when
+local optimisation algorithms are applied, as they will not move towards the
+higher energy states required for knots to be removed. Due to this limitation of
+local search methods, a global algorithm is required in order to facilitate the
+traversal between local minima in the global search space by effectively finding
+unknotted configurations.
+
+Section~\ref{litreview} will discuss relevant research that has already taken
 place in this area. Section~\ref{proposed} will detail the algorithm proposed by
 this paper.
 
@@ -117,10 +127,11 @@ As simulated annealing has been found to be successful when combined with
 evolutionary algorithms in similar problem domains \cite{PhysRevLett.91.080201},
 this paper will explore its use as an intermediate non-gradient method such that
 the proposed algorithm has three levels: global meta-heuristic (GA),
-intermediate non-gradient optimisation (SA) and local gradient-based
-optimisation (BFGS). The performance of this three stage optimisation method
-will be compared with a purely evolutionary algorithm without the intermediate
-step.
+intermediate non-gradient optimisation (SA) applied here in the form of a
+genetic
+mutation function, and local gradient-based optimisation (BFGS). The performance
+of this three stage optimisation method will be compared with a purely
+evolutionary algorithm without the intermediate step.
 
 \subsection{Genetic Encoding}
 
@@ -209,10 +220,10 @@ overwritten with new children during subsequent crossover stages.
 \subsection{Mutation}
 
 The mutation mechanism is where the intermediate non-gradient optimisation
-algorithm will be incorporated. In traditional genetic algorithms, mutation has
+algorithm is incorporated. In traditional genetic algorithms, mutation has
 a small chance of occurring and is random, resulting in some states which are
 less fit in the hopes that this will later lead to a deeper basin in the search
-space. By incorporating simulated annealing at the mutation stage it is hoped
+space. By incorporating simulated annealing at the mutation stage it is expected
 that the configuration will be dragged in a downward direction while also
 providing enough stochastic properties to allow boundaries between minima to be
 traversed, which is the goal of any mutation operator.
@@ -240,7 +251,7 @@ unbiased ways.
 \paragraph{Unravelling}
 
 This mutation operator is based on one described by Pullan \cite{PULLAN1998331}
-in which A random angle index $\alpha_i$ is selected in the molecule and the
+in which a random angle index $\alpha_i$ is selected in the molecule and the
 distance between this point and each endpoint is compared. The angles between
 the selected angle and the closest end forms a new segment of angles. For each
 angle in the selected segment, a very small (close to zero) random number is
@@ -259,10 +270,10 @@ is worse than the previous fitness, the angle is reverted to its previous state.
 This process is then repeated until either the maximum number of iterations is
 reached, or an improved configuration is found. This limit is important because
 after many generations it becomes increasingly difficult to find a random change
-in an angle that does not give lower energy, which would otherwise result in an
-infinite loop.
+in an angle that does not increase the energy, which without the iteration limit
+would result in an infinite loop.
 
-\paragraph{Naive Mutation}
+\paragraph{Naive Stochastic Mutation}
 
 This is an unbiased mutation operator which simply selects a random angle
 $\alpha_i$ and sets it to a random new value between $-\pi$ and $\pi$. This
@@ -273,7 +284,7 @@ within the population.
 \paragraph{Annealed Mutation}
 
 A relatively brief annealing schedule is used due to the fact that during every
-iteration an energy computation is required. The goal at this intermediate
+iteration an energy computation is required. The goal of this intermediate
 search algorithm is not to find the global minimum, but merely to provide a more
 localised search for deeper basins in the vicinity of the current configuration;
 it is hoped that if the GA search has found a local minimum in close proximity
@@ -287,7 +298,7 @@ reaches 0.
 During annealing, random angles are selected and modified by random amounts. If
 the change produces an improved state, it is always accepted. If the change
 produces a worsened state, it is accepted with a probability of $1 - e^{-\Delta
-E / Tk}$ such that both the current `temperature' as well as the degree to which
+E / Tk}$ such that both the current `temperature', as well as the degree to which
 the change will worsen the configuration, determine whether the change is to be
 accepted. $\Delta E$ represents the change in energy that will occur if the new
 configuration is accepted, $T$ represents the current temperature, and $k$ is
@@ -303,28 +314,55 @@ The following GA parameters are used:
 	\item[Mutation Rate] Deterministic and based on conditions as described in
 	section~\ref{mutationrate}
 \end{description}
+This study compares the performance of the GA using an annealed mutation
+operator with that using only a purely stochastic operator. Both tests also use
+the guided mutation and the `unravel' mutation as possible operators to be
+selected at random.
+
 The GA works by continually sorting a large pool (of size $n_{pop} \times 2$) of
 configurations in order to rank them in order of fitness and subsequently select
 states for crossover and mutation operators. The population is initialised with
-random molecules and sorted and then the procedure outlined in REF are carried
-out until either a known global optimum is found or the maximum number of
-generations is reached.
+random molecules and sorted and then the procedure outlined in
+algorithm~\ref{pseudo} are carried out until either a known global optimum is
+found or the maximum number of generations is reached.
 
-%%%% GA Pseudocode here
-
+\begin{algorithm}[H] \label{pseudo}
+	initialise population\;
+	\For{$\leftarrow 0$ \KwTo $max\_gen$} {
+		\For{$c\leftarrow n\_pop \KwTo n\_pop * 2$} {
+			$p1\leftarrow Population[rand \% pop\_size / 2]$\;
+			$p2\leftarrow Population[rand \% pop\_size / 2]$\;
+			$Population[c] \leftarrow Crossover(p1, p2)$\;
+		}
+		\ForEach{s in Population} {
+			$s.fitness \leftarrow calculateFitness()$\;
+		}
+		$quicksort(Population)$\;
+		\For{$i \leftarrow 1 \KwTo n\_pop * 2$} {
+			\If {$Population[i] - Population[i-1] < 1.0 \textit{OR} Population
+			[i].fitness > 0$} {
+				$randomMutation(Population[i])$\;
+			}
+		}
+		\ForEach{s in Population} {
+			$BFGS(s)$\;
+		}
+		$quicksort(Population)$
+	}
+\end{algorithm}
 The final stage of each GA iteration, after candidate configurations have been
-found by the GA and its immediate vicinity has been further explored through
-mutation, is to refine the configuration using gradient-based local search. This
-stage uses the gradient of the objective function in order to guarantee that the
-bottom of the current basin will be reached. The quasi-Newton method
-Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at this stage resulting
-in a fast descent towards the current local minimum at each stage. The
+found by the GA and their immediate vicinities have been further explored
+through mutation, is to refine the configuration using gradient-based local
+search. This stage uses the gradient of the objective function in order to
+guarantee that the bottom of the current basin will be reached. The quasi-Newton
+method Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at this stage
+resulting in a fast descent towards the current local minimum at each stage. The
 coordinates of this locally optimised configuration are also be passed back to
 the GA so that improvements are retained in future iterations. This is known as
 a `Lamarkian'process and has previously been found to be beneficial when used
 with this problem \cite{doi:10.1002/qua.560440214}.
 
-\section{Results}
+\section{Results \& Conclusion}
 
 \begin{figure}
 	\includegraphics[width=\textwidth]{nvse.pdf}
@@ -332,9 +370,40 @@ with this problem \cite{doi:10.1002/qua.560440214}.
 	\label{fig:nvse}
 \end{figure}
 
-\section{Conclusion}
+The genetic algorithm was tested in two configurations for comparison:
+\begin{itemize}
+	\item With the `unravel' mutation operator, the guided mutation operator and
+	the purely stochastic operator
+	\item With the `unravel' and guided mutation operators but replacing the
+	stochastic operator with the annealed operator.
+\end{itemize}
+It was expected that the annealed mutation would yield more optimal results
+for higher $N$ values by providing a means of traversing barriers between local
+minima and steeper basins within their vicinity. However, as seen in figure~
+\ref{fig:nvse}, while optimal results were found equally well by both
+configurations for around $n \leq 30$, at larger $n$ values the configuration
+with the annealed mutation operator performed less consistently and found
+global minima less often than the version with the stochastic mutation operator
+and no SA.
 
+The SA mutation operator was successful in its goal of extending the search to
+configurations
+surrounding those found by the GA, which was apparent in the increased variation
+within populations compared to the relatively homogeneous populations of the
+stochastic version. However, this increased variation may
+have been detrimental to the overall performance of the algorithm. Given the
+relatively high rate of mutation and the nature of the simulated annealing
+method, multiple worsened states are accepted for each mutation stage as opposed
+to the stochastic version which can only accept one worsened state per
+mutation. In other words, the simulated annealing approach is too aggressive
+for use as a mutation operator because early in the annealing process it accepts
+potentially many worsened states, throwing away important information found by
+the GA.
 
+It is thought that perhaps a less aggressive acceptance function or applying SA
+at a different stage in the algorithm (not as a mutation operator) may negate
+these effects, but it is apparent that the genetic algorithm approach provides
+sufficient global exploration, making the SA stage redundant.
 
 \section{Appendix}
 
@@ -432,20 +501,7 @@ with this problem \cite{doi:10.1002/qua.560440214}.
 \end{figure}
 
 
-%\subsection{Implementation}
 
-% \begin{algorithm} \caption{Proposed High-Level Algorithm} \label{algorithm}
-%   \centering \begin{algorithmic} \Procedure{optimise}{} % \State $nn \gets new
-%   Network$ %   \For{$i \gets 0; i <= number\_of\_epochs; i++$} %
-%   \For{$\textit{each data partition of minibatch size}$} %           \State
-%   $\textit{Do forward pass}$ %           \State $\textit{Backpropagate the
-%   resulting error}$ %           \State $\textit{Update the weights
-%   proportionally to their contribution to the error}$ %       \EndFor %
-%   \State $\textit{Shuffle and repartition the data}$ %   \EndFor \State $P
-%   \gets \textit{Initial Population Size}$ \State $population \gets initialise$
-%   \EndProcedure \end{algorithmic}
-	
-% \end{algorithm}
 
 \pagebreak
 
