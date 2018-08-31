@@ -105,8 +105,12 @@ double lj_potential(Cartesian *cart, int n)
 		for (int j = i+1; j<n; j++) {
 			double delta_x = cart[j].x-cart[i].x;
 			double delta_y = cart[j].y-cart[i].y;
-			v += 1/pow(pow(delta_x, 2)+pow(delta_y, 2), 6)
-					-2/pow(pow(delta_x, 2)+pow(delta_y, 2), 3);
+			double dx_sqrd = delta_x * delta_x;
+			double dy_sqrd = delta_y * delta_y;
+			double dxdy_sqrd = dx_sqrd + dy_sqrd;
+			double dxdy_sqrd_3 = dxdy_sqrd * dxdy_sqrd * dxdy_sqrd;
+			double dxdy_sqrd_6 = dxdy_sqrd_3 * dxdy_sqrd_3;
+			v += 1/dxdy_sqrd_6 -2/dxdy_sqrd_3;
 		}
 	}
 	return v;
@@ -126,9 +130,9 @@ void lj_gradient(const Cartesian *cart, double *gradients, int n_cart, int n_gra
 				double dx = cart[i].x-cart[j].x;
 				double dy = cart[i].y-cart[j].y;
 				double r_sqrd = pow(dx, 2)+pow(dy, 2);
-				double res = (1.0/pow(r_sqrd, 7)-1.0/pow(r_sqrd, 4))
-						*(dx*(cart[m].y-cart[j].y)
-								+dy*(cart[j].x-cart[m].x));
+				double r_sqrd_4 = r_sqrd * r_sqrd * r_sqrd * r_sqrd;
+				double r_sqrd_7 = r_sqrd_4 * r_sqrd * r_sqrd * r_sqrd;
+				double res = (1.0/r_sqrd_7-1.0/r_sqrd_4) * (dx*(cart[m].y-cart[j].y) +dy*(cart[j].x-cart[m].x));
 				dv += res;
 			}
 		}
