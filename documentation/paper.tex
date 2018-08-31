@@ -25,7 +25,7 @@ The model molecular energy minimisation problem involves the geometric
 configuration of a chain of atoms in two dimensions, each connected by rigid
 bonds of unit length, such that the total potential energy yielded by the sum of
 individual Lennard-Jones potentials is globally minimised. The total potential
-energy of the cluster is given by 
+energy of the cluster is given by
 $$V(r)=\sum^{N-1}_{i=1}\sum^{N}_{j=i+1}\left(r^{-12}_{ij}-2r^{-6}_{ij}\right)$$
 Where $r$ is the euclidean distance between a pair of atoms and $N$ is the
 number of atoms in the chain.
@@ -45,13 +45,13 @@ this paper.
 \section{Literature Review} \label{litreview}
 
 Genetic algorithms have been applied \cite{doi:10.1002/qua.560440214,
-PULLAN1998331, } successfully in order to extend the range of input size $N$ that
-is reachable through structural optimisation. This population based approach
-emulates the Darwinian process of natural selection, and works by performing
-crossover operations on pairs of candidate configurations with selection
-probabilities based on their fitness, producing new child nodes which contain
-genetic material from both parents. With every crossover operation there is a
-small chance of subsequent random mutation of the child configurations, the
+PULLAN1998331, } successfully in order to extend the range of input size $N$
+that is reachable through structural optimisation. This population based
+approach emulates the Darwinian process of natural selection, and works by
+performing crossover operations on pairs of candidate configurations with
+selection probabilities based on their fitness, producing new child nodes which
+contain genetic material from both parents. With every crossover operation there
+is a small chance of subsequent random mutation of the child configurations, the
 purpose of which is to promote genetic diversity within the population and
 prevent premature convergence. Over many generations the population converges
 towards a global minimum as each configuration communicates information about
@@ -124,49 +124,88 @@ step.
 
 \subsection{Genetic Encoding}
 
-Encoding each  molecule as a chain of two-dimensional cartesian coordinates
+Encoding each  molecule as a chain of two-dimensional Cartesian coordinates
 would require constraints to be enforced so that the relative orientations and
 unit length bonds are maintained. In order to avoid this, therefore, molecules
 will be encoded as sequences of $N-2$ angles, where $N$ is the number of atoms
 in the molecule and each angle, $\alpha_i$ represents the rotation of the
-segment following atom $a_i$. This encoding scheme means that cartesian
+segment following atom $a_i$. This encoding scheme means that Cartesian
 coordinates must be calculated at each Lennard-Jones potential computation as it
 requires euclidean distances between pairs of atoms to be computed, but results
 in much simpler crossover and mutation operations.
 
-\subsection{Selection \& Crossover Method}
+\subsection{Selection \& Crossover Methods}
 
-An elitist methodology will be utilised throughout the GA optimisation, meaning
-that the single fittest configuration will be passed on unmodified to subsequent
-generations in order to preserve beneficial traits and provide a mechanism for
-remembering information about the best configuration that has been found so far.
+% An elitist methodology will be utilised throughout the GA optimisation,
+% meaning that the single fittest configuration will be passed on unmodified to
+% subsequent generations in order to preserve beneficial traits and provide a
+% mechanism for remembering information about the best configuration that has
+% been found so far.
 
-Pairs of parents to be crossed over will then be selected using the Roulette
-method, where the probability for a potential parent to be selected is based on
-a function of its fitness value. The `elite' configurations that were inherited
-from the previous generation will also be candidates for selection using this
-method. Selected parents will undergo one of the following crossover operators
-with equal probabilities of occurring:
+% Pairs of parents to be crossed over will then be selected using the Roulette
+% method, where the probability for a potential parent to be selected is based
+% on a function of its fitness value. The `elite' configurations that were
+% inherited from the previous generation will also be candidates for selection
+% using this method. Selected parents will undergo one of the following
+% crossover operators with equal probabilities of occurring:
 
-\subsubsection{Single-Point Crossover}
+The population is represented as a large pool of size $n_{pop} \times 2$ where
+$n_{pop}$ is the user-provided population size. This pool contains both the
+current population and the generated children in a single array such that it
+can be easily sorted based on fitness.
 
-A single atom $a_i$ will be randomly selected. Atoms to the left of this point
-in one parent will form the left segment of the child, and the right segment of
-the child will be similarly formed from the atoms to the right of the second
-parent. A second child may be generated by repeating with the opposite segments
-(the right segment from parent one and the left segment from parent two).
-Finally, the angle $\alpha_i$ at the crossover point will be iterated through
-discrete steps until an angle is found which results in the lowest energy, as
-described by Pullan \cite{PULLAN1998331}.
+% \subsubsection{Single-Point Crossover}
 
-\subsubsection{Two-Point Crossover}
+% A single atom $a_i$ will be randomly selected. Atoms to the left of this point
+% in one parent will form the left segment of the child, and the right segment
+% of the child will be similarly formed from the atoms to the right of the
+% second parent. A second child may be generated by repeating with the opposite
+% segments (the right segment from parent one and the left segment from parent
+% two). Finally, the angle $\alpha_i$ at the crossover point will be iterated
+% through discrete steps until an angle is found which results in the lowest
+% energy, as described by Pullan \cite{PULLAN1998331}.
 
-Two crossover points will be selected at random and the molecules will be
-combined similarly to the single-point crossover, with each child containing two
-segments from one parent and one segment from the other. As with the single
-point crossover, the angles of both crossover points will be optimised.
+\subsubsection{Crossover}
 
-\subsection{Mutation and Intermediate Optimisation}
+A single-point crossover operator is applied as follows: A single angle index
+$a_i$ is selected at random. Angles to the left of this point in the first
+parent form the left segment of the child, and the right segment of the child is
+similarly formed from the atoms to the right of the second parent.
+
+\paragraph{Partial L-BFGS}
+
+Finally, $\alpha_i$ is locally optimised by applying BFGS with this single angle
+as its only optimisation parameter, with the rest of the angles fixed. Energy
+and gradients for use in the BFGS algorithm are computed using the entire
+molecule, while only the subset is optimised, leaving the rest of the angles
+unchanged. This optimisation of the single crossover point effectively locally
+optimises the relative orientation of the two connected segments.
+%TODO: Should I leave this paragraph in?
+Crossover operators with multiple crossover-points were not found to be
+beneficial during experimentation and were even detrimental in some cases. As
+such, they have been excluded from this study. The focus is primarily on
+evaluating the use of annealing as a mutation operator and therefore the
+crossover operation has been kept simple.
+
+\subsubsection{Selection}
+
+Pairs of parent configurations to be crossed over are selected by choosing
+randomly from the fittest half of the population. This is repeated $n_{pop}$
+times so that the number of children created is equal to the population size and
+forms the next generation. Selecting from the fitter half of the population
+ensures that information about the global search space is retained through
+multiple generations by providing bias towards states that are closer to the
+global minimum.
+
+At each generation the entire pool is sorted so that the $n_{pop}$ fittest
+states, including children and fitter parents from the current generation move
+to the top half of the pool. This forms the new generation's population, and
+implicitly provides a form of elitism by allowing states from the previous
+generation to remain in the population if they are fit enough. After sorting,
+the second half of the pool contains discarded states which can be later
+overwritten with new children during subsequent crossover stages.
+
+\subsection{Mutation}
 
 The mutation mechanism is where the intermediate non-gradient optimisation
 algorithm will be incorporated. In traditional genetic algorithms, mutation has
@@ -177,43 +216,95 @@ that the configuration will be dragged in a downward direction while also
 providing enough stochastic properties to allow boundaries between minima to be
 traversed, which is the goal of any mutation operator.
 
-Mutation will have a low chance of occurring so as not to corrupt fit
+\subsubsection{Mutation Rate}
+
+Mutation generally has a low chance of occurring so as not to corrupt fit
 configurations too frequently and lose information provided by the global
-search. Each generation, child nodes that are produced during the crossover
-stage will have a small chance of becoming initial states in the simulated
-annealing search.
+search. It was found, however, that with a low mutation rate the search tended
+to converge prematurely due to an overly homogeneous population. In order to
+overcome this, the chance of mutation for each configuration is based on its
+similarity to its direct neighbour. That is, each state is mutated if its
+fitness is within one unit of that of the previous state.
 
-\subsubsection{Annealing Schedule}
+Additionally, if a state's energy is positive it is guaranteed to be mutated.
+This has the effect of reducing the number of knotted configurations in the
+population, as the mutation operators tend to guide them towards a negative
+energy state.
 
-During annealing random angles are selected and modified by random amounts. If
-the change produces an improved state, it is accepted. If the change produces a
-worsened state, it is accepted with a probability of $1 - e^{\delta E / kT}$
-such that the current `temperature' as well as how bad the state is determines
-whether it is accepted.
+\subsubsection{Mutation Operators}
 
-The goal at this intermediate stage is not to find the global minimum, but
-merely to provide a more localised search for deeper basins in the vicinity of
-the current configuration; it is hoped that if the GA search has found a local
-minimum in close proximity to the global minimum, the SA stage will take large
-enough steps in order to climb over the boundary into the neighbouring basin
-where it can be finally optimised by the gradient search in the next stage.
+\paragraph{Unravelling}
 
-Therefore, an annealing schedule that prioritises speed over optimality will be
-chosen.
+This mutation operator is based on one described by Pullan \cite{PULLAN1998331}
+in which A random angle index $\alpha_i$ is selected in the molecule and the
+distance between this point and each endpoint is compared. The angles between
+the selected angle and the closest end forms a new segment of angles. For each
+angle in the selected segment, a very small (close to zero) random number is
+chosen and the angle is set to that value. This results in one end of the
+molecule being `unravelled' into a straight line, which effectively removes any
+knots or kinks within that segment.The segment is later `rewound' through
+subsequent local optimisation.
+
+\paragraph{Guided Stochastic Mutation}
+
+
+A random angle is selected and the current fitness and the current value of this
+	angle is stored.The selected angle is set to a random value between $-\pi$
+	and $\pi$ and the fitness is recomputed. If the new fitness is less than the
+	previous fitness, revert the angle to its previous state. This process is
+	then repeated until the maximum number of iterations is reached. This limit
+	is important because after many generations it becomes increasingly
+	difficult to find a random change in an angle that does not give lower
+	energy, which would otherwise result in an infinite loop.
+
+\paragraph{Naive Mutation}
+
+\paragraph{Simulated Annealing Mutation}
+
+A relatively brief annealing schedule is used due to the fact that during every
+iteration an energy computation is required. The goal at this intermediate
+search algorithm is not to find the global minimum, but merely to provide a more
+localised search for deeper basins in the vicinity of the current configuration;
+it is hoped that if the GA search has found a local minimum in close proximity
+to the global minimum, the SA stage will take large enough steps in order to
+climb over the boundary into the neighbouring basin where it can be finally
+optimised by the gradient search in the next stage. Therefore, an annealing
+schedule that prioritises speed over optimality will be chosen. The initial
+temperature $T$ will be set to 100 and decrement by one every iteration until it
+reaches 0.
+
+During annealing, random angles are selected and modified by random amounts. If
+the change produces an improved state, it is always accepted. If the change
+produces a worsened state, it is accepted with a probability of $1 - e^{-\Delta
+E / Tk}$ such that both the current `temperature' as well as the degree to which
+the change will worsen the configuration, determine whether the change is to be
+accepted. $\Delta E$ represents the change in energy that will occur if the new
+configuration is accepted, $T$ represents the current temperature, and $k$ is
+used to scale probability curve. A value of $k=0.03$ was chosen as this provides
+a reasonable probability curve for energy deltas of 1 and below.
 
 \subsection{Local Optimisation}
 
-The final stage of the algorithm, after a candidate configuration has been found
-by the GA and its immediate vicinity has been further explored through mutation,
-is to refine the configuration using gradient-based local search. This stage
-will use the gradient of the objective function in order to guarantee that the
-bottom of the current basin will be reached. The quasi-Newton method
-Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at this stage resulting
-in a fast descent towards the current local minimum at each stage.
+% The final stage of the algorithm, after a candidate configuration has been
+% found by the GA and its immediate vicinity has been further explored through
+% mutation, is to refine the configuration using gradient-based local search.
+% This stage will use the gradient of the objective function in order to
+% guarantee that the bottom of the current basin will be reached. The
+% quasi-Newton method Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at
+% this stage resulting in a fast descent towards the current local minimum at
+% each stage.
 
-The coordinates of this locally optimised configuration will also be passed back
-to the GA. This is known as a `Lamarkian' process and has been found to be
-beneficial when used with this problem \cite{doi:10.1002/qua.560440214}.
+% The coordinates of this locally optimised configuration will also be passed
+% back to the GA. This is known as a `Lamarkian' process and has been found to
+% be beneficial when used with this problem \cite{doi:10.1002/qua.560440214}.
+
+\subsection{GA Procedure and Parameters}
+
+\section{Results}
+
+\section{Discussion}
+
+\section{Appendix}
 
 %\subsection{Implementation}
 

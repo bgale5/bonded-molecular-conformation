@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
+    message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 endif()
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")

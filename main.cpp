@@ -328,7 +328,7 @@ void sa_mutation(double *m, int n, Cartesian *cart, int n_cart)
 		angle_to_cart(m, cart, n, n_cart);
 		double e_prime = lj_potential(cart, n);
 		double r = uniform_percentage(gen);
-		if (e_prime < e || exp(-(e_prime - e)/T) > r) {
+		if (e_prime < e || exp(-(e_prime - e)/T*0.03) > r) {
 			e = e_prime;
 		} else {
 			m[mp] = prev; // revert
@@ -356,6 +356,7 @@ void ga(
 	auto cart_buf = new Cartesian[n_angles + 1];
 	double global_best = std::numeric_limits<double>::max();
 	int best_gen = 0;
+	double best_e = std::numeric_limits<double>::max();
 	Bfgs_molecule bm;
 	for (int i = 0; i < p; i++) {
 		pop[i].m = new double[n_angles];
@@ -408,6 +409,11 @@ void ga(
 			return a.f < b.f;
 		});
 
+		if (pop[0].f < best_e) {
+			best_e = pop[0].f;
+			best_gen = g;
+		}
+
 		if (fabs(optimal[n_angles+1] - pop[0].f) <= 0.01)
 			break;
 	}
@@ -415,9 +421,11 @@ void ga(
 	// Return the best solution
 	std::copy(pop[0].m, pop[0].m + n_angles, sol);
 
-	for (int i = 0; i < n_pop; i++) {
+	for (int i =0; i < n_pop; i++) {
 		print_csv(pop[i].m, pop[i].f, n_angles);
 	}
+
+	std::cout << best_gen << std::endl;
 
 	// cleanup
 	for (int i = 0; i < n_pop; i++)
@@ -440,11 +448,9 @@ int main(int argc, char **argv)
 	const int n_gens = (int)std::strtol(argv[2], nullptr, 0);
 	srand((unsigned int) time(nullptr));
 	Crossover_ptr cross[1] = {single_crossover}; //double_crossover};
-	Mutation_ptr mut[3] = {naive_single_mutation, guided_mutation, stretch_mutation};
+	Mutation_ptr mut[3] = {sa_mutation, guided_mutation, stretch_mutation};
 	double sol[n_angles];
-	for (int i = 0; i < 3; i++) {
-		ga(cross, mut, sol, 12, 1, 3, n_angles, n_gens);
-	}
+	ga(cross, mut, sol, 12, 1, 3, n_angles, n_gens);
 
 	return 0;
 }
