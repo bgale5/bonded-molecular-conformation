@@ -380,7 +380,7 @@ void ga(
 			return a.f < b.f;
 		});
 
-		// Mutate all children with a small chance
+		// Mutate
 		for (int i = 1; i < p; i++) {
 			if (fabs(pop[i].f - pop[i-1].f) < 1.0 || pop[i].f > 0)
 				mut[rand() % n_mut](pop[i].m, n_angles, cart_buf, n_angles+1);

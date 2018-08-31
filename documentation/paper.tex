@@ -16,8 +16,8 @@
 
 \begin{document}
 \maketitle
-\tableofcontents
-\pagebreak
+% \tableofcontents
+% \pagebreak
 
 \section{Introduction}
 
@@ -180,6 +180,7 @@ and gradients for use in the BFGS algorithm are computed using the entire
 molecule, while only the subset is optimised, leaving the rest of the angles
 unchanged. This optimisation of the single crossover point effectively locally
 optimises the relative orientation of the two connected segments.
+
 %TODO: Should I leave this paragraph in?
 Crossover operators with multiple crossover-points were not found to be
 beneficial during experimentation and were even detrimental in some cases. As
@@ -216,7 +217,7 @@ that the configuration will be dragged in a downward direction while also
 providing enough stochastic properties to allow boundaries between minima to be
 traversed, which is the goal of any mutation operator.
 
-\subsubsection{Mutation Rate}
+\subsubsection{Mutation Rate} \label{mutationrate}
 
 Mutation generally has a low chance of occurring so as not to corrupt fit
 configurations too frequently and lose information provided by the global
@@ -233,6 +234,9 @@ energy state.
 
 \subsubsection{Mutation Operators}
 
+The following operators mutate a given configuration in both biased and
+unbiased ways.
+
 \paragraph{Unravelling}
 
 This mutation operator is based on one described by Pullan \cite{PULLAN1998331}
@@ -248,18 +252,25 @@ subsequent local optimisation.
 \paragraph{Guided Stochastic Mutation}
 
 
-A random angle is selected and the current fitness and the current value of this
-	angle is stored.The selected angle is set to a random value between $-\pi$
-	and $\pi$ and the fitness is recomputed. If the new fitness is less than the
-	previous fitness, revert the angle to its previous state. This process is
-	then repeated until the maximum number of iterations is reached. This limit
-	is important because after many generations it becomes increasingly
-	difficult to find a random change in an angle that does not give lower
-	energy, which would otherwise result in an infinite loop.
+A random angle is selected and both the current fitness of the molecule and the
+current value of this angle is stored.The selected angle is set to a random
+value between $-\pi$ and $\pi$ and the fitness is recomputed. If the new fitness
+is worse than the previous fitness, the angle is reverted to its previous state.
+This process is then repeated until either the maximum number of iterations is
+reached, or an improved configuration is found. This limit is important because
+after many generations it becomes increasingly difficult to find a random change
+in an angle that does not give lower energy, which would otherwise result in an
+infinite loop.
 
 \paragraph{Naive Mutation}
 
-\paragraph{Simulated Annealing Mutation}
+This is an unbiased mutation operator which simply selects a random angle
+$\alpha_i$ and sets it to a random new value between $-\pi$ and $\pi$. This
+operator has no regard for whether the mutation improves or worsens state, and
+primarily serves the purpose of reducing homogeneity and premature convergence
+within the population.
+
+\paragraph{Annealed Mutation}
 
 A relatively brief annealing schedule is used due to the fact that during every
 iteration an energy computation is required. The goal at this intermediate
@@ -283,28 +294,143 @@ configuration is accepted, $T$ represents the current temperature, and $k$ is
 used to scale probability curve. A value of $k=0.03$ was chosen as this provides
 a reasonable probability curve for energy deltas of 1 and below.
 
-\subsection{Local Optimisation}
-
-% The final stage of the algorithm, after a candidate configuration has been
-% found by the GA and its immediate vicinity has been further explored through
-% mutation, is to refine the configuration using gradient-based local search.
-% This stage will use the gradient of the objective function in order to
-% guarantee that the bottom of the current basin will be reached. The
-% quasi-Newton method Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at
-% this stage resulting in a fast descent towards the current local minimum at
-% each stage.
-
-% The coordinates of this locally optimised configuration will also be passed
-% back to the GA. This is known as a `Lamarkian' process and has been found to
-% be beneficial when used with this problem \cite{doi:10.1002/qua.560440214}.
-
 \subsection{GA Procedure and Parameters}
+
+The following GA parameters are used:
+\begin{description}
+	\item[Population Size] 12
+	\item[Maximum Generations] 100
+	\item[Mutation Rate] Deterministic and based on conditions as described in
+	section~\ref{mutationrate}
+\end{description}
+The GA works by continually sorting a large pool (of size $n_{pop} \times 2$) of
+configurations in order to rank them in order of fitness and subsequently select
+states for crossover and mutation operators. The population is initialised with
+random molecules and sorted and then the procedure outlined in REF are carried
+out until either a known global optimum is found or the maximum number of
+generations is reached.
+
+%%%% GA Pseudocode here
+
+The final stage of each GA iteration, after candidate configurations have been
+found by the GA and its immediate vicinity has been further explored through
+mutation, is to refine the configuration using gradient-based local search. This
+stage uses the gradient of the objective function in order to guarantee that the
+bottom of the current basin will be reached. The quasi-Newton method
+Broyden–Fletcher–Goldfarb–Shanno (BFGS) will be applied at this stage resulting
+in a fast descent towards the current local minimum at each stage. The
+coordinates of this locally optimised configuration are also be passed back to
+the GA so that improvements are retained in future iterations. This is known as
+a `Lamarkian'process and has previously been found to be beneficial when used
+with this problem \cite{doi:10.1002/qua.560440214}.
 
 \section{Results}
 
-\section{Discussion}
+\begin{figure}
+	\includegraphics[width=\textwidth]{nvse.pdf}
+	\caption{Lennard-Jones Potential as N size increases}
+	\label{fig:nvse}
+\end{figure}
+
+\section{Conclusion}
+
+
 
 \section{Appendix}
+
+\begin{table}[]
+	\label {tab:nosa}
+	\centering
+	\begin{tabular}{cccc|cccc}
+	$N$  & Optimal & Found & Gen. & $N$  & Optimal & Found  & Gen. \\
+	\hline
+	3  & -3.0    & -3.0  & 0    & 30 & -77.3   & -77.2  & 89   \\
+	4  & -5.1    & -5.1  & 1    & 31 & -79.5   & -79.6  & 70   \\
+	5  & -7.2    & -7.2  & 1    & 32 & -82.9   & -82.9  & 88   \\
+	6  & -9.3    & -9.4  & 52   & 33 & -86.1   & -86.2  & 87   \\
+	7  & -12.5   & -12.5 & 67   & 34 & -88.4   & -88.5  & 99   \\
+	8  & -14.7   & -14.7 & 75   & 35 & -91.7   & -90.7  & 99   \\
+	9  & -16.9   & -16.9 & 0    & 36 & -95.0   & -94.1  & 89   \\
+	10 & -20.1   & -20.1 & 0    & 37 & -98.3   & -97.3  & 98   \\
+	11 & -22.3   & -22.3 & 99   & 38 & -100.6  & -100.6 & 88   \\
+	12 & -25.6   & -25.6 & 96   & 39 & -103.8  & -103.7 & 86   \\
+	13 & -27.8   & -27.8 & 21   & 40 & -107.2  & -106.0 & 79   \\
+	14 & -31.0   & -31.0 & 95   & 41 & -109.4  & -108.5 & 96   \\
+	15 & -33.2   & -33.3 & 78   & 42 & -112.8  & -112.7 & 98   \\
+	16 & -36.5   & -36.5 & 5    & 43 & -116.0  & -114.1 & 97   \\
+	17 & -38.7   & -38.7 & 79   & 44 & -119.4  & -117.3 & 93   \\
+	18 & -42.0   & -42.0 & 77   & 45 & -121.6  & -120.6 & 96   \\
+	19 & -45.3   & -45.3 & 87   & 46 & -125.0  & -122.9 & 87   \\
+	20 & -47.5   & -47.6 & 76   & 47 & -128.6  & -125.3 & 94   \\
+	21 & -50.8   & -50.8 & 89   & 48 & -131.6  & -129.5 & 95   \\
+	22 & -53.0   & -53.1 & 99   & 49 & -133.8  & -130.4 & 78   \\
+	23 & -56.3   & -56.4 & 74   & 50 & -137.2  & -134.0 & 93   \\
+	24 & -59.6   & -59.6 & 90   & 51 & -140.5  & -137.4 & 72   \\
+	25 & -61.9   & -61.9 & 91   & 52 & -143.7  & -140.7 & 95   \\
+	26 & -65.1   & -65.1 & 22   & 53 & -146.1  & -142.6 & 98   \\
+	27 & -68.4   & -67.4 & 97   & 54 & -149.3  & -147.0 & 99   \\
+	28 & -70.7   & -70.7 & 53   & 55 & -152.7  & -150.0 & 68   \\
+	29 & -74.0   & -74.0 & 77   &    &         &        &      \\
+
+	\hline 
+	\end{tabular}
+	\caption{Results with unravelling, guided stochastic, and stochastic
+	mutation
+	operators}
+ \end{table}
+
+ \begin{table}[]
+	\label {tab:yessa}
+	\centering
+	\begin{tabular}{cccc|cccc}
+	$N$  & Optimal & Found & Gen. & $N$  & Optimal & Found  & Gen. \\
+	\hline
+	3  & -3.0    & -3     &    0   & 30 & -77.3   & -76.3    &  89  \\
+	4  & -5.1    & -5.1   &    0   & 31 & -79.5   & -78.5    &  81  \\
+	5  & -7.2    & -7.2   &    23  & 32 & -82.9   & -82.9    &  95  \\
+	6  & -9.3    & -9.4   &    90  & 33 & -86.1   & -86.2    &  98  \\
+	7  & -12.5   & -12.5  &    90  & 34 & -88.4   & -86.2    &  93  \\
+	8  & -14.7   & -14.7  &    93  & 35 & -91.7   & -90.8    &  99  \\
+	9  & -16.9   & -16.9  &    2   & 36 & -95.0   & -94.0    &  95  \\
+	10 & -20.1   & -20.1  &    1   & 37 & -98.3   & -96.2    &  86  \\
+	11 & -22.3   & -22.3  &    53  & 38 & -100.6  & -98.5    &  90  \\
+	12 & -25.6   & -25.6  &    80  & 39 & -103.8  & -102.7   &  94  \\
+	13 & -27.8   & -27.8  &    24  & 40 & -107.2  & -104.2   &  61  \\
+	14 & -31.0   & -31.0  &    56  & 41 & -109.4  & -108.5   &  87  \\
+	15 & -33.2   & -33.23 &    73  & 42 & -112.8  & -111.7   &  95  \\
+	16 & -36.5   & -36.5  &    15  & 43 & -116.0  & -112.8   &  90  \\
+	17 & -38.7   & -38.8  &    72  & 44 & -119.4  & -115.2   &  92  \\
+	18 & -42.0   & -42.1  &    93  & 45 & -121.6  & -117.3   &  99  \\
+	19 & -45.3   & -45.3  &    94  & 46 & -125.0  & -123.0   &  96  \\
+	20 & -47.5   & -47.5  &    86  & 47 & -128.6  & -126.3   &  88  \\
+	21 & -50.8   & -50.8  &    22  & 48 & -131.6  & -127.2   &  77  \\
+	22 & -53.0   & -53.0  &    61  & 49 & -133.8  & -130.7   &  67  \\
+	23 & -56.3   & -56.4  &    92  & 50 & -137.2  & -134.0   &  83  \\
+	24 & -59.6   & -58.7  &    76  & 51 & -140.5  & -134.2   &  98  \\
+	25 & -61.9   & -61.9  &    70  & 52 & -143.7  & -138.3   &  98  \\
+	26 & -65.1   & -65.1  &    3   & 53 & -146.1  & -142.9   &  45  \\
+	27 & -68.4   & -67.4  &    79  & 54 & -149.3  & -146.3   &  85  \\
+	28 & -70.7   & -70.7  &    67  & 55 & -152.7  & -149.5   &  97  \\
+	29 & -74.0   & -73.0  &    90  &    &         &          &       \\
+
+	\hline 
+	\end{tabular}
+	\caption{Results with unravelling, guided stochastic, and annealed mutation
+	operators}
+ \end{table}
+
+ \begin{figure}
+	\includegraphics[width=\textwidth]{figs/combined1.png}
+	\caption{Best Solution Found for N=5 to N=30}
+	\label{fig:combined1}
+\end{figure}
+
+ \begin{figure}
+	\includegraphics[width=\textwidth]{figs/combined2.png}
+	\caption{Best Solution Found for N=35 to N=55}
+	\label{fig:combined2}
+\end{figure}
+
 
 %\subsection{Implementation}
 
